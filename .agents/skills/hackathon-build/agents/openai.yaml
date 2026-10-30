@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hackathon Build"
+  short_description: "Implement one bounded task with clear acceptance checks"
+  default_prompt: "Use $hackathon-build to implement the next required behavior."

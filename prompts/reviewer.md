@@ -1,0 +1,1 @@
+Review the actual requirements and current implementation without editing files. Return at most three material gaps, each with a file reference, expected behavior, and a proposed check. Distinguish observed failures from hypotheses. Do not install dependencies, change settings, or operate the browser. Use only models and tools permitted in the provided environment.

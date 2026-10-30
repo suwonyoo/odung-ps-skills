@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hackathon Verify"
+  short_description: "Verify task behavior and record observed evidence"
+  default_prompt: "Use $hackathon-verify to validate the implemented requirements."

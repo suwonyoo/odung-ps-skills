@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "sha256": {
+    "harness.py": "259f0366aac17ee278eceddca2323bda9e2c8ae22b242fe4f967778ec1d1ff5a",
+    "docs/SHARED_GUIDANCE.md": "aeae3d1942fcc185c891c63cbbe0b77248853ee899f63d19999aeb77324f89f3",
+    "docs/START_HERE_KO.md": "f6dca97f71a238cfcf8c4dc9edf890987cfeb67c6036813c5bd64ff0d5cda9a5",
+    "SOURCES.md": "d8ffc7e9bda20dd0e1547a52e91505950550970022fde433ad6316dab544e61d",
+    "LICENSE": "66c9b1cf84d1550027eb2b21ca06974e868825db5523aac3cb4962a3bb964ba8",
+    "VERSION": "59854984853104df5c353e2f681a15fc7924742f9a2e468c29af248dce45ce03",
+    ".agents/skills/hackathon-build/SKILL.md": "5d7e3819b76c1337f0c3cbc9ca4f72e687b4905118bab2d2894fd4bcd3e71e78",
+    ".agents/skills/hackathon-build/agents/openai.yaml": "37016d5ec024b6e77ea565a48379c78f0b747ecb9c65d527af08e76b3ee7cafd",
+    ".agents/skills/hackathon-finish/SKILL.md": "9f8e6b42f0a1f873dcccc7937a4e0e5d5fbca0f929050309b8713e5ccb1e6514",
+    ".agents/skills/hackathon-finish/agents/openai.yaml": "dd562208abf806090178033cb808388ada45fe61f1a01912bc6176dff63ea593",
+    ".agents/skills/hackathon-intake/SKILL.md": "73eebf345abc9d0a0d14b0c6d1fab8b581624b6c0854d4bd9a8bc44d75997232",
+    ".agents/skills/hackathon-intake/agents/openai.yaml": "6f838f6f8bb20494fcf3589281dea96c815386f695befb50a32a87a96432faaa",
+    ".agents/skills/hackathon-verify/SKILL.md": "3db0f89d42d12953ee147bf09c379fc10413c3e73432cd8e324a6bed643ecfae",
+    ".agents/skills/hackathon-verify/agents/openai.yaml": "82c915efc9552cea9191f2f520941cda625dd6f8af484f52db858b227b8ef946"
+  }
+}
