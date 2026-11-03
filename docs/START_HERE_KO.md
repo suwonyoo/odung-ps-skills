@@ -1,6 +1,6 @@
 # Codex에서 시작하기
 
-이 도구는 범용 준비용이다. 실제 문제나 완성된 제출 서비스는 포함하지 않는다. Python 3.10 이상만 필요하며 외부 패키지, API 키, 유료 서비스가 필요 없다.
+이 도구는 범용 준비용이다. 실제 문제나 완성된 제출 서비스는 포함하지 않는다. 하네스는 Python 3.10 이상과 표준 라이브러리만 필요하다. 솔버 예제는 선택한 도구의 패키지와 런타임이 별도로 필요하며 API 키나 유료 서비스는 필요 없다.
 
 ## 준비 환경에서 설치
 
@@ -11,14 +11,14 @@ python3 /path/to/codex-hackathon-kit/scripts/install.py --target /path/to/task
 python3 /path/to/codex-hackathon-kit/scripts/install.py --target /path/to/task --apply
 cd /path/to/task
 python3 .harness/runner.py doctor
-python3 .harness/runner.py init
+python3 .harness/flow.py start --minutes 180
 ```
 
 첫 명령은 설치 계획만 출력한다. `--apply`는 새 파일만 만든다. 같은 내용이면 유지하고, 다른 내용이 있으면 전체 설치를 중단한다. 기존 README, AGENTS.md, 소스코드, 패키지, 인증 파일은 수정하지 않는다. 해시 검사는 배포 파일의 변경을 감지하는 기능이며 서명 검증은 아니다.
 
 이후 **대상 과제 폴더에서** Codex를 실행한다. 제공 환경에서는 `/status`, `/model`, 스킬 목록을 확인한다. 다음 요청으로 시작한다.
 
-> $hackathon-intake 를 사용해 README와 실제 과제 안내를 읽고 필수 결과물·성공 기준·미확인 사항을 정리해줘. .harness/GUIDE.md도 읽어줘. 기존 프로젝트를 보존하고 .harness/work/task.json을 실제 조건으로 채워줘.
+> .agents/skills/hackathon-start/SKILL.md를 읽고 실제 과제 안내부터 진행해 줘. 중요한 선택은 장단점과 검증 방법으로 묻고 답변과 실제 근거를 남겨 줘. 담당자 DM은 내가 직접 보낼게. 현재 단계·세션·시간도 계속 관리해 줘.
 
 설치 버전에서 스킬이 나타나지 않으면 해당 SKILL.md의 경로를 명시해 읽게 한다. 플랫폼 설정이나 인증을 바꾸지 않는다. 명시적 파일 읽기는 네이티브 스킬 로딩과 다르므로 이를 자동 인식 성공으로 기록하지 않는다.
 
@@ -61,7 +61,7 @@ python3 .harness/runner.py audit --json
 python3 .harness/runner.py report
 ```
 
-코딩은 `$hackathon-build`, 검증은 `$hackathon-verify`, 제출 전 확인은 `$hackathon-finish`로 요청한다. 도구가 모델을 따로 호출하거나 새 Codex 세션을 자동 실행하지는 않는다.
+시작 지침을 읽은 에이전트가 코딩·모델링·수동 질의·검증·마무리 지침을 연결한다. 필요하면 각 스킬을 직접 부를 수도 있다. 도구가 모델을 따로 호출하거나 새 Codex 세션을 자동 실행하지는 않는다. 자세한 상태·시간·기록 절차는 [WORKFLOW_KO.md](WORKFLOW_KO.md)에 있다.
 
 `check`는 명령을 실제 실행하고 `.harness/work/evidence/`에 원본 로그와 메타데이터를 저장한다. 실패 코드를 유지한다. 시간 초과는 124, 로그 용량 제한은 125, 실행 실패는 127을 반환한다. 제한이나 중단 시 해당 검사에서 만든 프로세스 그룹만 종료한다. 일반 플랫폼 프로세스는 조회하거나 종료하지 않는다.
 
@@ -91,7 +91,7 @@ python3 .harness/runner.py close
 
 ## 병렬 작업
 
-주 Codex는 코드를 작성하고, 서버는 별도 터미널에서 유지한다. 두 번째 AI가 허용되고 지원되면 읽기 전용 검토를 맡긴다. 잠금 파일·공통 타입·루트 설정은 하나의 세션만 수정한다. 작업 디렉터리를 나누는 git worktree는 CPU·포트·외부 서비스를 분리하지 않는다. 기능 지원이 확인되지 않으면 단일 세션으로 진행한다.
+사용자가 병렬 작업을 요청하고 환경에서 허용하면 A는 모델·검증, B는 API·저장·최소 화면을 맡긴다. 계약을 먼저 정하고 겹치지 않는 경로를 소유한다. 잠금 파일·공통 타입·루트 설정은 하나의 세션만 수정한다. 작업 디렉터리를 나누는 git worktree는 CPU·포트·외부 서비스를 분리하지 않는다. 기능 지원이 확인되지 않으면 단일 세션으로 진행한다.
 
 ## 공개 사용 전
 

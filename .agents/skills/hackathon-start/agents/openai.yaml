@@ -1,0 +1,4 @@
+interface:
+  display_name: "해커톤 시작과 진행"
+  short_description: "요구 분석부터 병렬 작업과 검증까지 진행 상태를 연결합니다"
+  default_prompt: "$hackathon-start로 제공된 과제를 분석하고 현재 단계부터 진행해 줘."

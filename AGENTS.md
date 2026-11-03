@@ -2,7 +2,7 @@
 
 This repository is a preparation toolkit, not a contest solution.
 
-- Keep runtime code compatible with Python 3.10+ and use only the standard library.
+- Keep the harness and workflow runtime compatible with Python 3.10+ and use only the standard library. Optional solver examples may depend on pinned OR-Tools or Timefold packages in isolated environments.
 - Preserve actual command exit codes, evidence, and unverified states.
 - Do not add external model calls, telemetry, browser automation, remote deployment, or credential handling.
 - Do not copy real task material, private guides, work records, or answers into this repository.

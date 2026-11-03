@@ -1,0 +1,4 @@
+interface:
+  display_name: "솔버 선택과 모델 명세"
+  short_description: "OR-Tools와 Timefold를 비교하고 검증 가능한 제약 모델로 정리합니다"
+  default_prompt: "$solver-modeling으로 조건을 분석하고 적합한 솔버와 모델 명세를 정해 줘."

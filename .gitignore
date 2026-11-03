@@ -8,3 +8,7 @@ build/
 coverage/
 .DS_Store
 release/
+target/
+classpath.txt
+result.json
+*.log

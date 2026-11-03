@@ -1,0 +1,5 @@
+{
+  "input_version": "synthetic-impossible-1",
+  "employees": [{"id": "A", "skills": ["support"], "unavailable_days": [1]}],
+  "shifts": [{"id": "s1", "day": 1, "skill": "support", "preferred_employee": "A"}]
+}

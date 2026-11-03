@@ -1,0 +1,13 @@
+{
+  "input_version": "synthetic-1",
+  "employees": [
+    {"id": "A", "skills": ["support", "repair"], "unavailable_days": []},
+    {"id": "B", "skills": ["support"], "unavailable_days": [2]},
+    {"id": "C", "skills": ["repair"], "unavailable_days": []}
+  ],
+  "shifts": [
+    {"id": "s1", "day": 1, "skill": "support", "preferred_employee": "B"},
+    {"id": "s2", "day": 1, "skill": "repair", "preferred_employee": "C"},
+    {"id": "s3", "day": 2, "skill": "support", "preferred_employee": "A"}
+  ]
+}

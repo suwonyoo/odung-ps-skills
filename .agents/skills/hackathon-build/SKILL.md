@@ -14,3 +14,5 @@ Read the actual task, project instructions, and `.harness/GUIDE.md` when present
 7. Record the change, actual reason, evidence reference, and remaining limitation briefly. Ask the user to operate the internal Browser for any required manual UI check. Do not claim to have performed that interaction yourself.
 
 Return changed behavior, actual validation result, and next action. Stop expanding scope when verification and submission time are at risk. Do not automate submission or provide answers during a no-AI follow-up phase.
+
+With flow.py installed, register session ownership and update the board at task start/change/end. Wrap expensive commands in a timed run. Maintain model-spec.md, architecture.md, decisions.md and AI_collaboration.md with the actual change, rationale, accepted cost and real evidence as you work. Route an actual candidate to integration, and failures to focused diagnosis. Preserve solver-native status and input version; never publish merely because a process returned zero.

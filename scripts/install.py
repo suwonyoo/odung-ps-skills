@@ -13,6 +13,8 @@ from harness import KitError, safe_path  # noqa: E402
 
 def installation_files():
     files = {".harness/runner.py": SOURCE / "harness.py",
+             ".harness/flow.py": SOURCE / "workflow.py",
+             ".harness/WORKFLOW_KO.md": SOURCE / "docs" / "WORKFLOW_KO.md",
              ".harness/GUIDE.md": SOURCE / "docs" / "SHARED_GUIDANCE.md",
              ".harness/START_HERE_KO.md": SOURCE / "docs" / "START_HERE_KO.md",
              ".harness/SOURCES.md": SOURCE / "SOURCES.md",
@@ -21,6 +23,10 @@ def installation_files():
     for p in sorted((SOURCE / ".agents/skills").rglob("*")):
         if p.is_file():
             files[p.relative_to(SOURCE).as_posix()] = p
+    for folder in ("templates", "references", "examples"):
+        for p in sorted((SOURCE / folder).rglob("*")):
+            if p.is_file() and not any(x in p.parts for x in ("target", "__pycache__", ".venv")) and p.name != "classpath.txt":
+                files[".harness/" + p.relative_to(SOURCE).as_posix()] = p
     return files
 
 
@@ -33,8 +39,8 @@ def install(target, apply=False):
         raise KitError("Use a separate task workspace, not the kit, filesystem root, or home")
     manifest = json.loads((SOURCE / "release-manifest.json").read_text(encoding="utf-8"))
     files = installation_files()
-    if len([name for name in files if name.endswith("/SKILL.md")]) != 4:
-        raise KitError("Expected four bundled skills")
+    if len([name for name in files if name.endswith("/SKILL.md")]) != 7:
+        raise KitError("Expected seven bundled skills")
     plan, conflicts = [], []
     for relative, source in files.items():
         if source.is_symlink() or not source.is_file():
@@ -76,7 +82,7 @@ def install(target, apply=False):
             path.unlink(missing_ok=True)
         raise
     print("Installed. Existing README, AGENTS.md, app code, configuration, and authentication were not changed.")
-    print("Next: python3 .harness/runner.py init; then ask Codex to use $hackathon-intake.")
+    print("Next: ask Codex to read .agents/skills/hackathon-start/SKILL.md and start; or python3 .harness/flow.py start.")
     return 0
 
 

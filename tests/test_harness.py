@@ -212,7 +212,7 @@ class Installation(unittest.TestCase):
         self.assertEqual((self.target / "AGENTS.md").read_text(), "existing project rules")
         self.assertEqual((self.target / "README.md").read_text(), "existing task")
         self.assertTrue((self.target / ".harness/runner.py").is_file())
-        self.assertEqual(len(list((self.target / ".agents/skills").glob("*/SKILL.md"))), 4)
+        self.assertEqual(len(list((self.target / ".agents/skills").glob("*/SKILL.md"))), 7)
 
     def test_conflict_is_preflighted_without_partial_installation(self):
         path = self.target / ".agents/skills/hackathon-finish/SKILL.md"

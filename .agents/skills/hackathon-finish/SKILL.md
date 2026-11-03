@@ -15,3 +15,5 @@ Read the task's exact submission requirements, existing project guidance, and `.
 8. Once work is finished, `python3 .harness/runner.py close` can close local records. Explain that this neither submits the task nor stops other AI sessions. Do not bypass it by rewriting the phase; use a separate practice workspace for another rehearsal.
 
 For any preparation review, require accurate explanations of what was built, which choices were made, what was actually checked, and what remains unknown. The task-specific rules always take priority over this generic toolkit.
+
+If flow.py is installed, inspect STATUS.md for blocked/stale sessions, integrate their actual changes, and reconcile ordinary engineering records with the final code. Keep user decisions distinct from AI defaults and user observations distinct from command results. Finish readiness does not mean an official submission occurred.

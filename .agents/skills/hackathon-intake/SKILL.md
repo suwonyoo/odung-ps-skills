@@ -18,3 +18,5 @@ If present, read `.harness/GUIDE.md`. Use `python3 .harness/runner.py` only when
 Return a brief plan, any material question, and the next bounded implementation step. Keep code edits for the build step. Never claim official compliance, acceptance, or a score.
 
 Do not transmit task files, use private keys or external AI, change supervision, push task content, deploy remotely, or use browser/computer automation when the task forbids those actions. If the user indicates a no-AI phase has begun, stop assistance with the assessment.
+
+When `.harness/flow.py` is installed, keep the `hackathon-start` workflow active: run start once, record pending manual questions, and route `inputs-reviewed` to solver-modeling before core optimization code. Review solver fit, not a fixed OR-Tools default.

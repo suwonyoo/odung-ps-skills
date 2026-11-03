@@ -16,9 +16,9 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-VERSION = "1.0.0"
+VERSION = "2.0.0"
 IGNORED_DIRS = {".git", ".harness", "node_modules", ".venv", "venv", "__pycache__",
-                ".pytest_cache", ".mypy_cache", ".ruff_cache", "dist", "build", ".next", "coverage"}
+                ".pytest_cache", ".mypy_cache", ".ruff_cache", "dist", "build", "target", ".next", "coverage"}
 MAX_LOG_BYTES = 8 * 1024 * 1024
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 

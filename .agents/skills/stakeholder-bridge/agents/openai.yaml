@@ -1,0 +1,4 @@
+interface:
+  display_name: "수동 질의와 요구사항 연결"
+  short_description: "별도 DM 질문과 전달된 답변을 요구사항·모델·검증에 연결합니다"
+  default_prompt: "$stakeholder-bridge로 내가 직접 물을 질문을 정리하고 전달한 답변을 반영해 줘."

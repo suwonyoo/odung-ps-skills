@@ -14,3 +14,5 @@ Read the task, project instructions, `.harness/GUIDE.md`, and `.harness/work/tas
 7. Generate `.harness/work/verification.md` using `report` only during the permitted work phase. If the report shows gaps, fix or accurately describe them. Map required content to the actual requested submission files.
 
 Report actual evidence IDs and limits. Readiness is local and conditional on the configured checks; it is not a contest grade, an authenticity guarantee, or official submission. Never fabricate logs, timestamps, file paths, or verification claims.
+
+For solver work, independently check assignment completeness, hard rules, objective accounting and input version. Exercise impossible input, time limits, stale input and fallback exhaustion when relevant. Distinguish lack of a feasible result from proven infeasibility. Use flow.py event verified only after current runner audit passes; process timing samples do not establish correctness or optimality.
