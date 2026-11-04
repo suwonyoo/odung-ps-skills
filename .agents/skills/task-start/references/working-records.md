@@ -11,4 +11,4 @@ Keep each item short and linked to real source paths or evidence IDs. This is or
 | Discover weakness | assumption, counterexample, impact, checked or unknown, next improvement |
 | Use AI suggestion | suggestion, accepted/modified/rejected/proposed, who decided, changed code, command/output, remaining limit |
 
-At meaningful checkpoints explain the changed behavior and its evidence in plain language. If the user's interpretation is unclear, ask one practical choice question. Do not turn every update into a quiz or invent a perfect chronological narrative after the fact.
+At modeling, integration and verification checkpoints explain the changed behavior, choice, accepted cost, evidence and known limit in 30–60 seconds of plain language. Relate technical terms to the actual input/output. Ask one practical consequence question when the user needs to own a decision, such as what happens if the data changes during planning. Record only their actual response; unanswered means not confirmed, not understood. Do not turn every update into a quiz or invent a perfect chronological narrative after the fact.

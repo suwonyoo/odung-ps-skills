@@ -176,4 +176,6 @@ def context_signature(root):
     if statefile.exists():
         state = h.load_json(statefile)
         files['semantics'] = {key: state.get(key) for key in ('questions', 'model_revision', 'engine')}
+        files['semantics']['questions'] = {qid: {k: v for k, v in q.items() if k != 'delivery'}
+                                          for qid, q in state.get('questions', {}).items()}
     return h.digest_bytes(json.dumps(files, sort_keys=True, ensure_ascii=False).encode())

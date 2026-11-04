@@ -22,6 +22,8 @@ try:
 except ModuleNotFoundError:
     import runner as h
 import coordination as c
+import planning
+import async_questions as aq
 
 PHASES = ("intake", "modeling", "parallel-build", "integrate", "verify", "finish")
 PHASE_LABELS = dict(zip(PHASES, ("자료 분석", "모델링", "구현", "통합", "검증", "마무리")))
@@ -121,13 +123,15 @@ def render(root):
     elapsed = (clock_end - datetime.fromisoformat(state["started_at"])).total_seconds()
     lines = ["# 작업 현황", "", f"갱신: {stamp(now)}", "",
              f"단계: {'종료' if closed else PHASE_LABELS[state['phase']]} ({PHASES.index(state['phase'])+1}/{len(PHASES)}) / 솔버: {state.get('engine') or '미선택'}",
-             f"진행: {'종료' if closed else '중요한 답변 / 반영 대기' if state.get('paused') else '진행 가능'} / 모델 변경 번호: {state.get('model_revision',0)}",
+             f"진행: {'종료' if closed else '관련 작업·단계 전환 대기 / 독립 작업 가능' if state.get('paused') else '진행 가능'} / 모델 변경 번호: {state.get('model_revision',0)}",
              f"담당자 DM: {contact_label(state)}",
              f"전체 경과: {max(0, elapsed)/60:.1f}분 / {'종료 시 남은 예산' if closed else '설정 마감까지'}: {remaining/60:.1f}분",
              f"다음 행동: {state['next_action']}", f"읽을 지침: {state['skill']}", "",
              "시간은 설정 예산과 실측값이다. 최적해 도달 ETA나 완료율을 의미하지 않는다.", "",
-             f"시간 정책: {'종료 시각 기준 기록' if closed else '설정 마감 경과 · 실행 금지' if remaining <= 0 else '새 기능 중지 · 검증/제출 정리' if remaining <= 1800 else '첫 통합 결과 확인' if remaining <= 5400 else '핵심 기능 우선'}",
-             "", "| 질문 | 상태 | 발견 단계 | 중단 작업 | 영향 |", "|---|---|---|---|---|"]
+             f"시간 정책: {'종료 시각 기준 기록' if closed else '설정 마감 경과 · 실행 금지' if remaining <= 0 else '작업별 계획 참조' if state.get('time_plan') else '임시 기준: 새 기능 중지 · 검증/제출 정리' if remaining <= 1800 else '임시 기준: 핵심 기능 우선'}", '']
+    lines += planning.render(state, clock_end)
+    lines += [aq.inbox_status(root, state), '질문 문서: .harness/work/hr-outbox.md / 받은 원문: .harness/work/hr-inbox.md',
+              "", "| 질문 | 상태 | 발견 단계 | 중단 작업 | 영향 |", "|---|---|---|---|---|"]
     for q in state.get('questions', {}).values():
         lines.append('| ' + ' | '.join(h.md_cell(x) for x in (q['id'], q['status'], q['phase'], ', '.join(q['blocks']), q['impact'])) + ' |')
     lines += ["", "| 세션 | 상태 | 작업 | 경과 | 갱신 | 다음 / 장애물 |",
@@ -192,6 +196,7 @@ def start(root, minutes):
                      "intake_review": None, "model_revision": 0, "questions": {}, "paused": None,
                      "contact": {"mode": "unspecified", "note": "필요할 때만 확인"}}, exclusive=True)
         append_event(root, "start", {"budget_minutes": minutes})
+        render_questions(root, read_state(root))
         print(render(root))
     return 0
 
@@ -321,10 +326,49 @@ def contact_label(state):
             "unspecified": "미설정 · 필요할 때만 확인"}.get(state.get('contact', {}).get('mode', 'unspecified'), '미설정')
 
 
+def set_plan(root, file, reason):
+    h.require_working(root)
+    h.nonempty_string(reason, 'planning reason')
+    proposed = planning.validate(h.load_json(h.safe_path(root, file)))
+    with locked(root):
+        state = read_state(root)
+        revision = state.get('time_plan', {}).get('revision', 0) + 1
+        state['time_plan'] = {'revision': revision, 'at': stamp(), 'reason': reason,
+                              'context': planning.context(state), 'plan': proposed}
+        state['updated_at'] = stamp()
+        h.write_json(path(root, 'workflow.json'), state)
+        append_event(root, 'time-plan', {'revision': revision, 'reason': reason, 'plan': proposed})
+        print(render(root))
+    return 0
+
+
+def import_answers(root, file, source):
+    h.require_working(root)
+    if source not in ANSWER_SOURCES:
+        raise h.KitError('Unknown answer source')
+    raw = h.safe_path(root, file).read_bytes()
+    with locked(root):
+        state = read_state(root)
+        staged = aq.stage_answers(state, raw.decode('utf-8-sig'))
+        for qid, text in staged:
+            q = state['questions'][qid]
+            q['answers'].append({'text': text, 'path': file, 'sha256': h.digest_bytes(raw),
+                                 'actor': source, 'recorded_at': stamp()})
+            q['status'] = 'answered'
+        if staged:
+            state['updated_at'] = stamp()
+            h.write_json(path(root, 'workflow.json'), state)
+            append_event(root, 'answers-imported', {'ids': [qid for qid, _ in staged], 'source': source})
+        render_questions(root, state)
+        print(f'Imported {len(staged)} actual answer(s); no model change or automatic resume.')
+        print(render(root))
+    return 0
+
+
 def question_next(state):
     if state.get('contact', {}).get('mode') == 'none':
         return 'DM 요청 없이 문서 근거를 확인합니다. 결과를 바꾸는 중요한 미결정만 사용자에게 묻고 반영 후 재개합니다.'
-    return '질문 원문 전달 → 실제 답변 또는 문서 근거 기록 → 명세·검사 반영 → 재개. 독립 작업은 계속합니다.'
+    return '질문 문서를 사용자가 수동 전달 → 답변함에 실제 원문 추가 → 명세·검사 반영 → 재개. 독립 작업은 계속합니다.'
 
 
 def contact(root, mode, note):
@@ -367,6 +411,7 @@ def render_questions(root, state):
             lines += ['', '### 충돌 기록', '', conflict['note']]
         lines.append('')
     path(root, 'questions.md').write_text('\n'.join(lines), encoding='utf-8')
+    aq.render(root, state)
 
 
 def question(root, args):
@@ -399,7 +444,12 @@ def question(root, args):
             if args.id not in questions:
                 raise h.KitError('Unknown question ID')
             q = questions[args.id]
-            if args.action == 'answer':
+            if args.action == 'sent':
+                h.nonempty_string(args.note, 'user-reported delivery note')
+                if state.get('contact', {}).get('mode') != 'manual' or q['status'] not in ('pending', 'conflict'):
+                    raise h.KitError('Record sent only for a pending manual-DM question after the user reports delivery')
+                q['delivery'] = {'at': stamp(), 'note': args.note, 'actor': 'user-reported'}
+            elif args.action == 'answer':
                 if q['status'] not in ('pending', 'conflict'):
                     raise h.KitError('Answer already recorded; mark conflict or create a follow-up')
                 answerfile = h.safe_path(root, args.file)
@@ -691,6 +741,7 @@ def main(argv=None):
     rr = sub.add_parser('recover-run'); rr.add_argument('id'); rr.add_argument('--note', required=True)
     rs = sub.add_parser('resume'); rs.add_argument('--note', required=True)
     ct = sub.add_parser('contact'); ct.add_argument('--mode', choices=('manual', 'none'), required=True); ct.add_argument('--note', required=True)
+    pl = sub.add_parser('plan'); pl.add_argument('--file', required=True); pl.add_argument('--reason', required=True)
     q = sub.add_parser('question'); qa = q.add_subparsers(dest='action', required=True)
     ask = qa.add_parser('ask'); ask.add_argument('id')
     for name in ('text', 'impact', 'assumption'): ask.add_argument('--'+name, required=True)
@@ -698,6 +749,9 @@ def main(argv=None):
     ask.add_argument('--nonblocking', action='store_true')
     ans = qa.add_parser('answer'); ans.add_argument('id'); ans.add_argument('--file', required=True)
     ans.add_argument('--source', choices=ANSWER_SOURCES)
+    sent = qa.add_parser('sent'); sent.add_argument('id'); sent.add_argument('--note', required=True)
+    imp = qa.add_parser('import'); imp.add_argument('--file', default='.harness/work/hr-inbox.md')
+    imp.add_argument('--source', choices=ANSWER_SOURCES, required=True)
     res = qa.add_parser('resolve'); res.add_argument('id'); res.add_argument('--interpretation', required=True)
     change = res.add_mutually_exclusive_group(required=True)
     change.add_argument('--changed', action='store_true'); change.add_argument('--unchanged', dest='changed', action='store_false')
@@ -711,8 +765,10 @@ def main(argv=None):
         root = root.resolve()
         if args.command == "doctor": return doctor()
         if args.command == "start": return start(root, args.minutes)
-        if args.command == 'question': return question(root, args)
+        if args.command == 'question':
+            return import_answers(root, args.file, args.source) if args.action == 'import' else question(root, args)
         if args.command == 'contact': return contact(root, args.mode, args.note)
+        if args.command == 'plan': return set_plan(root, args.file, args.reason)
         if args.command == 'resume': return resume(root, args.note)
         if args.command == 'recover-lock': return recover_lock(root)
         if args.command == 'recover-run': return recover_run(root, args.id, args.note)

@@ -15,6 +15,8 @@ def installation_files():
     files = {".harness/runner.py": SOURCE / "harness.py",
              ".harness/flow.py": SOURCE / "workflow.py",
              ".harness/coordination.py": SOURCE / "coordination.py",
+             ".harness/planning.py": SOURCE / "planning.py",
+             ".harness/async_questions.py": SOURCE / "async_questions.py",
              "AGENTS.md": SOURCE / "templates/task-AGENTS.md",
              ".harness/WORKFLOW_KO.md": SOURCE / "docs" / "WORKFLOW_KO.md",
              ".harness/START_HERE_KO.md": SOURCE / "docs" / "START_HERE_KO.md",

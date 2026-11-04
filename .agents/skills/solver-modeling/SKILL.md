@@ -15,7 +15,7 @@ Read actual requirements, `.harness/work/questions.md`, the supplied environment
 8. Define candidate-result and failure semantics before parallel integration: input version, engine/raw status, candidate presence, feasibility, optimality/infeasibility proof flags, objective/score, timing, validation. Use immutable input snapshots and atomically verify the active version/epoch before publish. Specify fallback exhaustion and stale candidate behavior.
 9. Freeze a concrete I/O contract revision; link requirement IDs and acceptance checks. On `contract-ready`, move to bounded build. Revisit the model when a stakeholder answer changes a hard rule or objective. Record decomposition losses and unimplemented guarantees instead of claiming full optimization.
 
-Keep this step focused: identify the right problem and get a measured working baseline quickly. Independently test rules; a solver can optimize an incorrectly modeled problem successfully.
+Keep this step focused: identify the right problem and get a measured working baseline quickly. Independently test rules; a solver can optimize an incorrectly modeled problem successfully. Before committing the model, explain what is being decided, what is forbidden, what is improved, one tiny expected result and one unguaranteed property. Record the accepted tradeoff; do not claim the user understood without their response. Check that every decision component in intake has an implementation approach and every shared rule has an independent check. Use the first measured prototype to revise installation/modeling/build time estimates, not just solver runtime. Inspect the HR inbox before a consequential model or contract change.
 
 ## v3 coordination
 
