@@ -17,6 +17,7 @@ def installation_files():
              ".harness/coordination.py": SOURCE / "coordination.py",
              ".harness/planning.py": SOURCE / "planning.py",
              ".harness/async_questions.py": SOURCE / "async_questions.py",
+             ".harness/specification.py": SOURCE / "specification.py",
              "AGENTS.md": SOURCE / "templates/task-AGENTS.md",
              ".harness/WORKFLOW_KO.md": SOURCE / "docs" / "WORKFLOW_KO.md",
              ".harness/START_HERE_KO.md": SOURCE / "docs" / "START_HERE_KO.md",

@@ -143,6 +143,7 @@ def current_contract(root, state):
 
 
 def readiness_errors(root):
+    import specification
     file = workfile(root, 'workflow.json')
     if not file.exists():
         return []  # The standalone acceptance runner remains usable.
@@ -153,7 +154,7 @@ def readiness_errors(root):
     errors += ['Pending decision: ' + q['id'] for q in blockers(state)]
     if state.get('paused'):
         errors.append('Workflow paused; use resume after reconciling answers')
-    for check in (current_intake, current_contract):
+    for check in (current_intake, current_contract, specification.current):
         try:
             check(root, state)
         except (h.KitError, OSError) as exc:
@@ -168,7 +169,7 @@ def readiness_errors(root):
 def context_signature(root):
     """Evidence depends on semantic records, never the clock/status/events."""
     files = {}
-    for name in ('intake.json', 'contract.json', 'model-spec.md'):
+    for name in ('intake.json', 'contract.json', 'model-spec.md', 'spec-review.json'):
         file = workfile(root, name)
         if file.exists():
             files[name] = h.digest_file(file)

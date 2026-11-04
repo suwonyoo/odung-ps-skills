@@ -75,7 +75,7 @@ def validate(plan):
 
 def context(state):
     """Planning review triggers, separate from acceptance evidence."""
-    value = {k: state.get(k) for k in ('phase', 'model_revision', 'engine', 'questions', 'paused')}
+    value = {k: state.get(k) for k in ('phase', 'model_revision', 'engine', 'questions', 'paused', 'deadline', 'time_policy')}
     return h.digest_bytes(json.dumps(value, sort_keys=True, ensure_ascii=False).encode())
 
 
@@ -109,7 +109,7 @@ def summary(state, now):
     waiting = [q['id'] for q in c.blockers(state)]
     return dict(low=low, high=high, remaining=left, reserve=reserve,
                 slack=left-high-reserve, review=review, age=age, waiting=waiting,
-                freeze_optional=left <= reserve+final_work)
+                freeze_optional=state.get('time_policy', {}).get('mode', 'fixed') == 'fixed' and left <= reserve+final_work)
 
 
 def render(state, now):

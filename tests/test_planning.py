@@ -104,6 +104,8 @@ class PlanningAndInbox(unittest.TestCase):
         self.set_plan(data); state = w.read_state(self.root)
         self.assertFalse(p.summary(state, deadline-timedelta(minutes=20))['freeze_optional'])
         self.assertTrue(p.summary(state, deadline-timedelta(minutes=12))['freeze_optional'])
+        state['time_policy'] = {'mode':'flexible'}
+        self.assertFalse(p.summary(state, deadline+timedelta(minutes=12))['freeze_optional'])
 
     def test_outbox_tracks_user_reported_delivery_and_never_edits_inbox(self):
         w.contact(self.root, 'manual', 'User will manually send DM')

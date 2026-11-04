@@ -24,6 +24,7 @@ except ModuleNotFoundError:
 import coordination as c
 import planning
 import async_questions as aq
+import specification as spec
 
 PHASES = ("intake", "modeling", "parallel-build", "integrate", "verify", "finish")
 PHASE_LABELS = dict(zip(PHASES, ("자료 분석", "모델링", "구현", "통합", "검증", "마무리")))
@@ -33,7 +34,7 @@ SOURCE_LABELS = {"user-copied-hr": "사용자가 전달한 담당자 답변 (직
                  "provided-document": "제공 문서 (외부 답변 아님)"}
 ROUTES = {
     "start": ("intake", "task-intake", "문제와 데이터를 읽고 필수 조건·확인 방법을 정리합니다. 중요한 모호함만 질문합니다."),
-    "inputs-reviewed": ("modeling", "solver-modeling", "해결 방법을 선택하고 작은 입력으로 실제 실행해 봅니다."),
+    "inputs-reviewed": ("modeling", "solver-modeling", "명세·HR 모호함을 검토한 뒤 해결 방법을 작은 입력으로 실행합니다."),
     "hr-answer": (None, "stakeholder-bridge", "답변 원문과 해석을 분리하고 영향받는 조건을 확인합니다."),
     "requirements-changed": ("modeling", "solver-modeling", "바뀐 조건을 모델·입출력 명세·검사에 반영하고 다시 확인합니다."),
     "contract-ready": ("parallel-build", "task-build", "공유 입출력을 기준으로 파일 담당을 나누고 첫 전체 동작을 구현합니다."),
@@ -121,14 +122,17 @@ def render(root):
     clock_end = datetime.fromisoformat(session["closed_at"]) if closed else now
     remaining = (datetime.fromisoformat(state["deadline"]) - clock_end).total_seconds()
     elapsed = (clock_end - datetime.fromisoformat(state["started_at"])).total_seconds()
+    fixed = fixed_time(state)
+    time_label = '설정 마감까지' if fixed else '유연한 목표까지'
     lines = ["# 작업 현황", "", f"갱신: {stamp(now)}", "",
              f"단계: {'종료' if closed else PHASE_LABELS[state['phase']]} ({PHASES.index(state['phase'])+1}/{len(PHASES)}) / 솔버: {state.get('engine') or '미선택'}",
              f"진행: {'종료' if closed else '관련 작업·단계 전환 대기 / 독립 작업 가능' if state.get('paused') else '진행 가능'} / 모델 변경 번호: {state.get('model_revision',0)}",
              f"담당자 DM: {contact_label(state)}",
-             f"전체 경과: {max(0, elapsed)/60:.1f}분 / {'종료 시 남은 예산' if closed else '설정 마감까지'}: {remaining/60:.1f}분",
+             f"전체 경과: {max(0, elapsed)/60:.1f}분 / {'종료 시 남은 예산' if closed else time_label}: {remaining/60:.1f}분",
+             f"명세·HR 검토: {'기록 있음 · 실행 전 최신성 재확인' if state.get('model_review') else '미기록 · 업무 모델 실행 전 필수'}",
              f"다음 행동: {state['next_action']}", f"읽을 지침: {state['skill']}", "",
              "시간은 설정 예산과 실측값이다. 최적해 도달 ETA나 완료율을 의미하지 않는다.", "",
-             f"시간 정책: {'종료 시각 기준 기록' if closed else '설정 마감 경과 · 실행 금지' if remaining <= 0 else '작업별 계획 참조' if state.get('time_plan') else '임시 기준: 새 기능 중지 · 검증/제출 정리' if remaining <= 1800 else '임시 기준: 핵심 기능 우선'}", '']
+             f"시간 정책: {'종료 시각 기준 기록' if closed else '설정 마감 경과 · 실행 금지' if fixed and remaining <= 0 else '유연한 목표 경과 · 계속 가능, 계획 재산정' if not fixed and remaining <= 0 else '작업별 계획 참조' if state.get('time_plan') else '임시 기준: 검증·인계 시간 보호' if fixed and remaining <= 1800 else '작업 규모에 따라 재산정'}", '']
     lines += planning.render(state, clock_end)
     lines += [aq.inbox_status(root, state), '질문 문서: .harness/work/hr-outbox.md / 받은 원문: .harness/work/hr-inbox.md',
               "", "| 질문 | 상태 | 발견 단계 | 중단 작업 | 영향 |", "|---|---|---|---|---|"]
@@ -172,7 +176,13 @@ def render(root):
     return "\n".join(lines)
 
 
-def start(root, minutes):
+def start(root, minutes=None, time_mode=None):
+    if time_mode == 'fixed' and minutes is None:
+        raise h.KitError('Supply the actual --minutes for fixed time; omit time mode for a flexible target')
+    mode = time_mode or ('flexible' if minutes is None else 'fixed')
+    if mode not in ('fixed', 'flexible'):
+        raise h.KitError('Time mode must be fixed or flexible')
+    minutes = 180 if minutes is None else minutes
     positive(minutes, "minutes")
     h.init(root)
     h.require_working(root)
@@ -181,7 +191,7 @@ def start(root, minutes):
             print(render(root))
             return 0
         templates = Path(__file__).resolve().parent / "templates"
-        for name in ("model-spec.md", "architecture.md", "questions.md", "AI_collaboration.md", "limits.md", "contract.json", "intake.json", "GLOSSARY.md"):
+        for name in ("model-spec.md", "spec-review.json", "architecture.md", "questions.md", "AI_collaboration.md", "limits.md", "contract.json", "intake.json", "GLOSSARY.md"):
             dest = path(root, name)
             if not dest.exists():
                 content = (templates / name).read_bytes()
@@ -192,10 +202,11 @@ def start(root, minutes):
         h.write_json(path(root, "workflow.json"), {"schema_version": 2, "phase": phase,
                      "skill": skill, "next_action": action, "started_at": stamp(now),
                      "deadline": stamp(now + timedelta(minutes=minutes)), "updated_at": stamp(now),
+                     "time_policy": {"mode": mode, "reason": "Explicit starting budget" if mode == 'fixed' else "Provisional planning target; revise after intake"},
                      "engine": None, "contract_revision": None, "contract_sha256": None,
                      "intake_review": None, "model_revision": 0, "questions": {}, "paused": None,
                      "contact": {"mode": "unspecified", "note": "필요할 때만 확인"}}, exclusive=True)
-        append_event(root, "start", {"budget_minutes": minutes})
+        append_event(root, "start", {"budget_minutes": minutes, "time_mode": mode})
         render_questions(root, read_state(root))
         print(render(root))
     return 0
@@ -226,15 +237,18 @@ def event(root, name, note):
             state['intake_review'] = c.intake_check(root, state)
             state['contract_revision'] = None
             state['contract_sha256'] = None
+            state['model_review'] = None
         if name == "contract-ready":
             c.current_intake(root, state)
             if not state.get("engine"):
                 raise h.KitError("Select the engine (or baseline) with a reason first")
+            spec.current(root, state)
             state["contract_revision"] = contract_check(root)
             state['contract_sha256'] = c.contract_signature(root)
         if name in ('candidate-ready', 'integrated', 'claim-complete', 'verified'):
             c.current_intake(root, state)
             c.current_contract(root, state)
+            spec.current(root, state)
         if name == "verified" and not h.audit_result(root)["local_checks_satisfied"]:
             raise h.KitError("Current configured checks are not satisfied; inspect runner.py audit")
         if name == "requirements-changed":
@@ -242,6 +256,7 @@ def event(root, name, note):
             state['contract_sha256'] = None
             state['intake_review'] = None
             state['model_revision'] += 1
+            state['model_review'] = None
         phase, skill, action = ROUTES[name]
         if name == 'check-failed' and state['phase'] == 'finish':
             phase = 'verify'
@@ -262,8 +277,8 @@ def select(root, engine, reason, alternative, evidence):
             raise h.KitError('Select an engine after intake review, in unpaused modeling')
         c.current_intake(root, state)
         state.update(engine=engine, phase="modeling", skill="solver-modeling",
-                     next_action="선택한 방법으로 작은 입력을 실행하고 공유 입출력 명세를 확정합니다.",
-                     updated_at=stamp(), contract_revision=None, contract_sha256=None)
+                     next_action="명세·HR 검토를 기록한 뒤 작은 입력을 실행하고 공유 입출력을 확정합니다.",
+                     updated_at=stamp(), contract_revision=None, contract_sha256=None, model_review=None)
         h.write_json(path(root, "workflow.json"), state)
         append_event(root, "solver-selected", {"engine": engine, "reason": reason, "alternative": alternative, "evidence": evidence})
         with path(root, "decisions.md").open("a", encoding="utf-8") as f:
@@ -311,9 +326,53 @@ def worker(root, worker_id, status, task, files, next_action, *, run_id=None):
     return data
 
 
+def fixed_time(state):
+    return state.get('time_policy', {}).get('mode', 'fixed') == 'fixed'
+
+
 def ensure_time(state):
-    if utc() >= datetime.fromisoformat(state['deadline']):
+    if fixed_time(state) and utc() >= datetime.fromisoformat(state['deadline']):
         raise h.KitError('Configured work deadline passed. Do not run more work; check actual phase/rules with the user.')
+
+
+def schedule(root, remaining_minutes, mode, reason, source_file=None):
+    """Adjust a planning target; changed actual deadlines need recorded evidence."""
+    h.require_working(root)
+    positive(remaining_minutes, 'remaining minutes')
+    h.nonempty_string(reason, 'schedule reason')
+    if mode not in ('fixed', 'flexible'):
+        raise h.KitError('Time mode must be fixed or flexible')
+    with locked(root):
+        state = read_state(root)
+        if (fixed_time(state) or mode == 'fixed') and not source_file:
+            raise h.KitError('Changing an actual deadline needs --source-file with the actual instruction; use plan for allocation only')
+        evidence = None
+        if source_file:
+            file = h.safe_path(root, source_file)
+            h.nonempty_string(file.read_text(encoding='utf-8'), 'time instruction')
+            evidence = {'path': source_file, 'sha256': h.digest_file(file)}
+        before = {'deadline': state['deadline'], 'time_policy': state.get('time_policy')}
+        state['deadline'] = stamp(utc() + timedelta(minutes=remaining_minutes))
+        state['time_policy'] = {'mode': mode, 'reason': reason, 'source': evidence}
+        state['updated_at'] = stamp()
+        h.write_json(path(root, 'workflow.json'), state)
+        append_event(root, 'schedule-revised', {'before': before, 'deadline': state['deadline'],
+                     'remaining_minutes': remaining_minutes, 'time_policy': state['time_policy']})
+        print(render(root))
+    return 0
+
+
+def review_model(root, note):
+    h.require_working(root)
+    h.nonempty_string(note, 'model/HR review note')
+    with locked(root):
+        state = read_state(root)
+        state['model_review'] = {'at': stamp(), 'note': note, 'signature': spec.signature(root, state)}
+        state['updated_at'] = stamp()
+        h.write_json(path(root, 'workflow.json'), state)
+        append_event(root, 'model-reviewed', state['model_review'])
+        print(render(root))
+    return 0
 
 
 def session_blockers(state, session):
@@ -355,6 +414,7 @@ def import_answers(root, file, source):
             q['answers'].append({'text': text, 'path': file, 'sha256': h.digest_bytes(raw),
                                  'actor': source, 'recorded_at': stamp()})
             q['status'] = 'answered'
+            q.pop('assessment', None)
         if staged:
             state['updated_at'] = stamp()
             h.write_json(path(root, 'workflow.json'), state)
@@ -409,6 +469,12 @@ def render_questions(root, state):
                       '- 반영 파일: ' + ', '.join(q['updates'])]
         for conflict in q.get('conflicts', []):
             lines += ['', '### 충돌 기록', '', conflict['note']]
+        for assessment in q.get('assessments', []):
+            lines += ['', f"### 답변 검토 · {assessment['verdict']} · 원문 {assessment['answer_count']}개 시점", '', assessment['meaning']]
+            if assessment.get('example'):
+                lines += ['- 확인 사례: ' + assessment['example'], '- 예상 결과: ' + assessment['expected']]
+            if assessment.get('remaining'):
+                lines += ['- 남은 모호함: ' + assessment['remaining'], '- 추가 질문: ' + assessment['followup']]
         lines.append('')
     path(root, 'questions.md').write_text('\n'.join(lines), encoding='utf-8')
     aq.render(root, state)
@@ -435,6 +501,7 @@ def question(root, args):
             if not blocking and blocks:
                 raise h.KitError('A nonblocking question cannot block sessions')
             q = {'id': args.id, 'text': args.text, 'impact': args.impact, 'assumption': args.assumption,
+                 'kind': getattr(args, 'kind', 'business-rule'),
                  'blocking': blocking, 'blocks': blocks, 'requires': args.requires,
                  'status': 'pending', 'phase': state['phase'], 'created_at': stamp(), 'answers': []}
             questions[args.id] = q
@@ -446,11 +513,11 @@ def question(root, args):
             q = questions[args.id]
             if args.action == 'sent':
                 h.nonempty_string(args.note, 'user-reported delivery note')
-                if state.get('contact', {}).get('mode') != 'manual' or q['status'] not in ('pending', 'conflict'):
+                if state.get('contact', {}).get('mode') != 'manual' or q['status'] not in ('pending', 'conflict', 'needs-clarification'):
                     raise h.KitError('Record sent only for a pending manual-DM question after the user reports delivery')
                 q['delivery'] = {'at': stamp(), 'note': args.note, 'actor': 'user-reported'}
             elif args.action == 'answer':
-                if q['status'] not in ('pending', 'conflict'):
+                if q['status'] not in ('pending', 'conflict', 'needs-clarification'):
                     raise h.KitError('Answer already recorded; mark conflict or create a follow-up')
                 answerfile = h.safe_path(root, args.file)
                 text = answerfile.read_text(encoding='utf-8')
@@ -461,15 +528,21 @@ def question(root, args):
                 q['answers'].append({'text': text, 'path': args.file, 'sha256': h.digest_file(answerfile),
                                      'actor': actor, 'recorded_at': stamp()})
                 q['status'] = 'answered'
+                q.pop('assessment', None)
+            elif args.action == 'assess':
+                spec.assess(q, args, stamp())
             elif args.action == 'conflict':
                 h.nonempty_string(args.note, 'conflict note')
                 q.setdefault('conflicts', []).append({'at': stamp(), 'note': args.note})
                 q['status'] = 'conflict'
+                q.pop('assessment', None)
                 if q['blocking'] and not state.get('paused'):
                     state['paused'] = {'phase': state['phase'], 'skill': state['skill'], 'at': stamp()}
             elif args.action == 'resolve':
                 if q['status'] != 'answered':
                     raise h.KitError('Record an actual stakeholder reply, user decision or supplied document before resolution')
+                if not spec.answer_ready(q):
+                    raise h.KitError('Assess answer clarity with a concrete example and expected result before resolution')
                 h.nonempty_string(args.interpretation, 'interpretation')
                 task = h.validate_task(root)
                 c.refs(args.checks, {x['id'] for x in task['checks']+task['manual_checks']}, 'resolution checks')
@@ -480,7 +553,7 @@ def question(root, args):
                          checks=args.checks, material_change=args.changed, resolved_at=stamp())
                 if args.changed:
                     state.update(phase='modeling', intake_review=None, contract_revision=None, contract_sha256=None,
-                                 model_revision=state['model_revision']+1)
+                                 model_revision=state['model_revision']+1, model_review=None)
                     if state.get('paused'):
                         state['paused']['return_to_modeling'] = True
         if state.get('paused'):
@@ -579,8 +652,15 @@ def timed_run(root, args):
     h.require_working(root)
     state = read_state(root)
     ensure_time(state)
+    purpose = getattr(args, 'purpose', None) or ('utility' if args.engine == 'baseline' else 'solve')
+    if purpose not in ('solve', 'utility') or (args.engine != 'baseline' and purpose != 'solve'):
+        raise h.KitError('Solver engines must use purpose solve; utility is only for independent environment/build work')
+    if purpose == 'solve':
+        if args.engine != state.get('engine'):
+            raise h.KitError('Run engine must match the reviewed model')
+        spec.current(root, state)
     positive(args.limit, "limit")
-    if args.limit > (datetime.fromisoformat(state['deadline']) - utc()).total_seconds():
+    if fixed_time(state) and args.limit > (datetime.fromisoformat(state['deadline']) - utc()).total_seconds():
         raise h.KitError('Outer run limit exceeds remaining work budget; reduce it')
     if not args.argv:
         raise h.KitError("Provide a command after --")
@@ -592,12 +672,12 @@ def timed_run(root, args):
     inputs = extra_before["declared_inputs"]
     # Fingerprint includes declared inputs, command, limit, machine and current task sources.
     source = h.snapshot(root)
-    fingerprint = h.digest_bytes(json.dumps({"argv": argv, "cwd": str(cwd.relative_to(root)), "engine": args.engine, "limit": args.limit,
+    fingerprint = h.digest_bytes(json.dumps({"argv": argv, "cwd": str(cwd.relative_to(root)), "engine": args.engine, "purpose": purpose, "limit": args.limit,
         "inputs": inputs, "sources": source, "kit_sources": extra_before["kit_sources"],
         "machine": platform.platform(), "cpu_count": os.cpu_count(), "python": sys.version}, sort_keys=True).encode())
     run_id = utc().strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8]
     run = {"id": run_id, "session": args.session, "engine": args.engine, "argv": argv, "cwd": args.cwd,
-           "label": args.label, "started_at": stamp(), "limit_seconds": args.limit,
+           "label": args.label, "purpose": purpose, "started_at": stamp(), "limit_seconds": args.limit,
            "fingerprint": fingerprint, "input_sha256": inputs, "sources": source,
            "reason": "running", "log": f".harness/work/runs/{run_id}.log",
            "host": platform.node(), "supervisor_pid": os.getpid(), "child_pid": None}
@@ -605,6 +685,8 @@ def timed_run(root, args):
     h.write_json(target, run, exclusive=True)
     try:
         worker(root, args.session, "running", args.label, None, "Timed command running", run_id=run_id)
+        if purpose == 'solve':
+            spec.current(root, read_state(root))
     except BaseException:
         run.update(reason='not_started', finished_at=stamp(), duration_seconds=0,
                    exit_code=2, process_exit_code=None, workspace_changed=False, log_sha256=None)
@@ -624,8 +706,13 @@ def timed_run(root, args):
                 last_heartbeat = -10.0
                 while proc.poll() is None:
                     elapsed = time.monotonic() - start_time
-                    if session_blockers(read_state(root), args.session):
+                    live = read_state(root)
+                    if session_blockers(live, args.session) or (purpose == 'solve' and c.blockers(live)):
                         reason = 'hr_blocked'
+                        h.stop_process(proc)
+                        break
+                    if fixed_time(live) and utc() >= datetime.fromisoformat(live['deadline']):
+                        reason = 'deadline'
                         h.stop_process(proc)
                         break
                     if elapsed >= args.limit:
@@ -664,7 +751,7 @@ def timed_run(root, args):
                 f.truncate(h.MAX_LOG_BYTES)
             reason = "output_limit"
         reported = {"timeout": 124, "output_limit": 125, "supervisor_error":125,
-                    "interrupted": 130, "hr_blocked": 126}.get(reason, code if code >= 0 else 128-code)
+                    "interrupted": 130, "hr_blocked": 126, "deadline": 124}.get(reason, code if code >= 0 else 128-code)
         try:
             source_after = h.snapshot(root)
             extra_after = extra_snapshot(root, args.input)
@@ -726,7 +813,12 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--project", default=".")
     sub = p.add_subparsers(dest="command", required=True)
-    s = sub.add_parser("start"); s.add_argument("--minutes", type=float, default=180)
+    s = sub.add_parser("start"); s.add_argument("--minutes", type=float)
+    s.add_argument('--time-mode', choices=('fixed', 'flexible'))
+    tm = sub.add_parser('schedule'); tm.add_argument('--remaining-minutes', type=float, required=True)
+    tm.add_argument('--mode', choices=('fixed', 'flexible'), required=True)
+    tm.add_argument('--reason', required=True); tm.add_argument('--source-file')
+    mr = sub.add_parser('review-model'); mr.add_argument('--note', required=True)
     e = sub.add_parser("event"); e.add_argument("name", choices=ALLOWED); e.add_argument("--note", required=True)
     c = sub.add_parser("select"); c.add_argument("engine", choices=ENGINES)
     for name in ("reason", "alternative", "evidence"): c.add_argument("--"+name, required=True)
@@ -735,6 +827,7 @@ def main(argv=None):
     r = sub.add_parser("run"); r.add_argument("--session", required=True); r.add_argument("--engine", choices=ENGINES, required=True)
     r.add_argument("--label", required=True); r.add_argument("--limit", type=float, required=True); r.add_argument("--cwd", default=".")
     r.add_argument("--input", action="append", default=[]); r.add_argument("argv", nargs=argparse.REMAINDER)
+    r.add_argument('--purpose', choices=('solve', 'utility'))
     v = sub.add_parser("status"); v.add_argument("--watch", action="store_true")
     sub.add_parser("history"); sub.add_parser("doctor")
     sub.add_parser('recover-lock')
@@ -747,8 +840,13 @@ def main(argv=None):
     for name in ('text', 'impact', 'assumption'): ask.add_argument('--'+name, required=True)
     ask.add_argument('--blocks', nargs='+'); ask.add_argument('--requires', nargs='*', default=[])
     ask.add_argument('--nonblocking', action='store_true')
+    ask.add_argument('--kind', choices=('business-rule', 'implementation'), default='business-rule')
     ans = qa.add_parser('answer'); ans.add_argument('id'); ans.add_argument('--file', required=True)
     ans.add_argument('--source', choices=ANSWER_SOURCES)
+    ass = qa.add_parser('assess'); ass.add_argument('id')
+    ass.add_argument('--verdict', choices=('clear', 'partial', 'ambiguous', 'conflicting', 'delegated'), required=True)
+    ass.add_argument('--meaning', required=True)
+    for name in ('example', 'expected', 'remaining', 'followup'): ass.add_argument('--'+name)
     sent = qa.add_parser('sent'); sent.add_argument('id'); sent.add_argument('--note', required=True)
     imp = qa.add_parser('import'); imp.add_argument('--file', default='.harness/work/hr-inbox.md')
     imp.add_argument('--source', choices=ANSWER_SOURCES, required=True)
@@ -764,7 +862,9 @@ def main(argv=None):
             raise h.KitError("Project must be an existing non-symlink directory")
         root = root.resolve()
         if args.command == "doctor": return doctor()
-        if args.command == "start": return start(root, args.minutes)
+        if args.command == "start": return start(root, args.minutes, args.time_mode)
+        if args.command == 'schedule': return schedule(root, args.remaining_minutes, args.mode, args.reason, args.source_file)
+        if args.command == 'review-model': return review_model(root, args.note)
         if args.command == 'question':
             return import_answers(root, args.file, args.source) if args.action == 'import' else question(root, args)
         if args.command == 'contact': return contact(root, args.mode, args.note)

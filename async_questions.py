@@ -41,7 +41,7 @@ def stage_answers(state, text):
             raise h.KitError('Unknown inbox question ID: ' + qid)
         if any(a['text'] == reply for a in q.get('answers', [])):
             continue
-        if q['status'] not in ('pending', 'conflict'):
+        if q['status'] not in ('pending', 'conflict', 'needs-clarification'):
             raise h.KitError('Changed/already answered inbox ID: ' + qid + '; preserve history and mark conflict or create a follow-up')
         staged.append((qid, reply))
     return staged
@@ -60,10 +60,15 @@ def render(root, state):
         for q in state['questions'].values():
             if q['status'] == 'resolved':
                 continue
-            status = '반영 대기' if q['status'] == 'answered' else '답변 대기' if q.get('delivery') else '전달 대기'
+            status = '답변 검토·반영 대기' if q['status'] == 'answered' else '추가 확인 필요' if q['status'] in ('needs-clarification', 'conflict') else '답변 대기' if q.get('delivery') else '전달 대기'
             rows += [f"## {q['id']} · {status}", '', q['text'], '',
                      '- 발견 단계: ' + q['phase'], '- 영향: ' + q['impact'],
                      '- 관련 작업: ' + (', '.join(q['blocks']) or '없음'), '']
+            assessment = q.get('assessment', {})
+            if assessment.get('followup'):
+                rows += ['확인된 범위: ' + assessment['meaning'],
+                         '남은 모호함: ' + assessment['remaining'],
+                         '추가로 전달할 질문: ' + assessment['followup'], '']
     h.safe_path(root, '.harness/work/hr-outbox.md').write_text('\n'.join(rows), encoding='utf-8')
 
 

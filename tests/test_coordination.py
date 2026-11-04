@@ -16,7 +16,7 @@ sys.path.insert(0,str(ROOT))
 import harness as h
 import workflow as w
 import coordination as c
-from fixtures import intake, build_ready, verify_phase
+from fixtures import intake, build_ready, verify_phase, assess_clear
 
 
 class ScenarioTests(unittest.TestCase):
@@ -42,6 +42,8 @@ class ScenarioTests(unittest.TestCase):
         return w.question(self.root,argparse.Namespace(action='answer',id=id,file=p.name))
 
     def resolve(self,id='Q1',changed=False):
+        if w.read_state(self.root)['questions'][id]['status'] == 'answered':
+            assess_clear(self.root, id)
         return w.question(self.root,argparse.Namespace(action='resolve',id=id,interpretation='Use half-open intervals; recorded for the synthetic test.',changed=changed,updates=['.harness/work/intake.json'],checks=['value']))
 
     def test_incomplete_first_analysis_cannot_advance(self):
@@ -167,6 +169,7 @@ class ScenarioTests(unittest.TestCase):
         intake(self.root);self.ask()
         with self.assertRaises(h.KitError):self.resolve()
         self.answer()
+        assess_clear(self.root)
         with self.assertRaises(h.KitError):w.question(self.root,argparse.Namespace(action='resolve',id='Q1',interpretation='x',changed=False,updates=['BRIEF.md'],checks=['invented']))
 
     def test_unsettled_prerequisite_question_is_not_in_ready_frontier(self):

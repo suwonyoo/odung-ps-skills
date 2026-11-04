@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import harness as h
 import workflow as w
-from fixtures import intake, build_ready, verify_phase
+from fixtures import intake, build_ready, verify_phase, model_review
 
 
 class Workflow(unittest.TestCase):
@@ -50,6 +50,7 @@ class Workflow(unittest.TestCase):
         intake(self.root)
         w.event(self.root,"inputs-reviewed","reviewed")
         w.select(self.root,"baseline","Simple problem","Solver unnecessary","observed")
+        model_review(self.root)
         with self.assertRaises(h.KitError): w.event(self.root,"contract-ready","draft")
         c={"revision":"v1","owner":"core","requirement_ids":["R1"],"input":"JSON","output":"value","failure_behavior":"error"}
         h.write_json(w.path(self.root,"contract.json"),c)

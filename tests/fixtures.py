@@ -2,6 +2,7 @@
 import json
 import workflow as w
 import harness as h
+import argparse
 
 
 def intake(root):
@@ -22,10 +23,31 @@ def intake(root):
     return d
 
 
+def model_review(root):
+    w.path(root, 'model-spec.md').write_text('Return integer 3. No inputs, solver or optimization. Reject any other value.')
+    state = w.read_state(root)
+    h.write_json(w.path(root, 'spec-review.json'), {
+        'schema_version': 1,
+        'rules': [{'id':'K1', 'meaning':'Return exactly integer three', 'example':'Run CLI once',
+                   'expected':'integer 3', 'boundary':'Return 4 instead', 'boundary_expected':'Reject', 'question_ids':[]}],
+        'objective':'Exact value only', 'coupling':'Single constant; no coupled decisions',
+        'failure':'Wrong value fails acceptance; no output is accepted as fallback',
+        'hr':{'question_ids':[q['id'] for q in state['questions'].values() if q['blocking']],
+              'summary':'Synthetic exact-value instruction reviewed; any registered decision reconciled'}})
+    w.review_model(root, 'Concrete example and boundary reviewed against synthetic brief')
+
+
+def assess_clear(root, id='Q1'):
+    w.question(root, argparse.Namespace(action='assess', id=id, verdict='clear',
+               meaning='Adjacent intervals may share an endpoint.',
+               example='09:00–10:00 and 10:00–11:00', expected='Allowed; no overlap'))
+
+
 def build_ready(root):
     intake(root)
     w.event(root,'inputs-reviewed','Synthetic brief reviewed')
     w.select(root,'baseline','No optimization','Unnecessary solver runtime','Synthetic input has one constant')
+    model_review(root)
     h.write_json(w.path(root,'contract.json'),{'revision':'v1','owner':'core','requirement_ids':['R1'],
                  'input':'none','output':'integer three','failure_behavior':'nonzero exit'})
     w.event(root,'contract-ready','Interface recorded')

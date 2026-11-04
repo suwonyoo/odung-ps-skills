@@ -1,17 +1,19 @@
 # 시작부터 재개까지
 
-대상 과제 폴더의 Codex에 “문제 자료는 inputs/에 있어”처럼 실제 자료 위치만 알려줘도 시작한다. 목표·필수 결과물·제약·시간을 파일에서 먼저 찾으며 별도 시작값이나 긴 프롬프트는 요구하지 않는다. 파일에도 시간이 없으면 임시 180분 예산을 알리고, 중요한 정보가 누락·충돌할 때만 질문한다. 새 폴더에 설치하면 AGENTS.md 진입점이 생긴다. 기존 AGENTS.md가 있으면 보존하므로 최초 한 번 `.agents/skills/task-start/SKILL.md를 읽고 시작해 줘`를 덧붙인다.
+대상 과제 폴더의 Codex에 “문제 자료는 inputs/에 있어”처럼 실제 자료 위치만 알려줘도 시작한다. 목표·필수 결과물·제약·시간을 파일에서 먼저 찾으며 별도 시작값이나 긴 프롬프트는 요구하지 않는다. 파일에도 시간이 없으면 180분을 첫 자료 확인 전의 임시 목표로만 쓰고 실제 작업 규모로 다시 잡으며, 중요한 정보가 누락·충돌할 때만 질문한다. 새 폴더에 설치하면 AGENTS.md 진입점이 생긴다. 기존 AGENTS.md가 있으면 보존하므로 최초 한 번 `.agents/skills/task-start/SKILL.md를 읽고 시작해 줘`를 덧붙인다.
 
 특정 행사 이름은 필요 없다. 일반 개발에는 AI 허용 선언을 요구하지 않으며 평가 과제일 때 실제 규정을 확인한다. 레포 연결만으로 프로그램이 실행되는 것은 아니다. 지침을 읽은 에이전트가 분석·구현하고, CLI는 단계·질문·시간·근거를 기록하고 전환 조건을 검사한다. 사용자는 매 단계마다 스킬 이름을 입력하지 않아도 된다. 실제 CLI의 자동 발견 여부는 사용할 환경에서 확인한다.
 
 ## 1. 첫 분석
 
 ```bash
-python3 .harness/flow.py start --minutes 180
+python3 .harness/flow.py start
+# 실제 제한시간이 제공된 경우에만 (예: 210분)
+# python3 .harness/flow.py start --minutes 210 --time-mode fixed
 python3 .harness/flow.py status --watch
 ```
 
-start는 재실행해도 기존 시계와 기록을 보존한다. 상태판은 5초마다 갱신하며 Ctrl+C는 관찰만 끝낸다. 실제 제한시간이 210분이면 처음에 210을 사용한다. 준비 레포 개발 시간과 실제 과제 시작 시간을 섞지 않는다.
+start는 재실행해도 기존 시계와 기록을 보존한다. 상태판은 5초마다 갱신하며 Ctrl+C는 관찰만 끝낸다. 인자 없는 start는 flexible, 명시적 --minutes는 기본 fixed다. --time-mode flexible로 목표를 직접 지정할 수도 있다. 준비 레포 개발 시간과 실제 과제 시작 시간을 섞지 않는다.
 
 분석 20분은 해당 단계의 작업 예산이지 첫 설명까지 기다릴 시간이 아니다. 에이전트는 첫 자료 확인 뒤 목표·출력을 먼저 공유하고, 데이터·규칙·연결·미결정·모델안을 확인하는 대로 중간 결과를 보인다. 작업 중에는 의미 있는 발견·질문·결과가 생길 때, 그리고 클라이언트가 허용하면 약 60초 안에 짧게 안내한다. 형식은 현재 단계 → 확인한 사실과 출처 → 가정·미확정 → HR 변화 → 다음 행동 → 사용자 필수/선택 행동이다. 빈 항목과 변함없는 설명은 반복하지 않는다. 필수 행동이 없으면 그렇게 알리고 실제 원문·작은 결과·결정 중 짧게 살펴볼 것 하나만 선택 사항으로 제안한다. 매번 사용자 확인을 기다리지 않는다. 상태판 갱신과 분석 결과 공유는 별개이며, 긴 도구 실행 중에는 관측한 시간·상태만 알린다. 정확한 주기의 자동 알림을 보장하는 기능은 아니다.
 
@@ -55,7 +57,19 @@ python3 .harness/flow.py question answer Q2 --file inputs/decisions/Q2.txt --sou
 python3 .harness/flow.py question answer Q3 --file inputs/rule.txt --source provided-document
 ```
 
-각 명령은 해당 Q가 실제 존재하고 근거를 확보했을 때만 쓴다. AI가 만든 기본값은 사람의 답변으로 기록하지 않는다. 답을 받았어도 아직 answered일 뿐이다. 원문과 AI 해석을 분리하고 요구사항·모델·구현·검사를 실제로 반영한다.
+각 명령은 해당 Q가 실제 존재하고 근거를 확보했을 때만 쓴다. AI가 만든 기본값은 사람의 답변으로 기록하지 않는다. 답을 받았어도 아직 answered일 뿐이다. 먼저 답변의 명확성을 검토한다. 아래는 명령 형식이며 실제 답변에 없는 내용을 채우는 허가가 아니다.
+
+```bash
+python3 .harness/flow.py question assess Q1 --verdict ambiguous --meaning '짧은 이동을 선호한다는 것만 확인됨' --remaining '개인별 상한인지 평균 기준인지 미확정' --followup '평균은 줄지만 한 사람이 1분 더 타는 계획도 허용하나요?'
+# 실제 추가 원문은 새 파일로 보존한 뒤 같은 Q에 덧붙임
+python3 .harness/flow.py question answer Q1 --file inputs/hr/Q1-clarification.txt --source user-copied-hr
+# 실제 답변이 사례를 명확히 판정할 때만 clear
+python3 .harness/flow.py question assess Q1 --verdict clear --meaning '모든 개인의 탑승시간 악화 금지' --example '평균은 줄지만 한 사람은 1분 악화' --expected '후보 거부'
+```
+
+verdict는 clear/partial/ambiguous/conflicting/delegated다. partial·ambiguous는 needs-clarification, conflicting은 conflict로 남으며 관련 작업을 계속 막는다. 새 근거 없이 clear로 바꿀 수 없다. 에이전트가 의미를 검토하며 프로그램이 모호한 표현을 자동 판정하지는 않는다. delegated는 `ask --kind implementation`으로 등록한 되돌릴 수 있는 구현 선택에만 가능하다. 업무 사실·필수 규칙을 위임으로 확정하지 않는다. clear/delegated에는 --meaning, --example, --expected가 필요하고 나머지는 --meaning, --remaining, --followup이 필요하다.
+
+그 뒤 원문과 해석을 대조하고 요구사항·모델·구현·검사를 실제로 반영한다.
 
 ```bash
 python3 .harness/flow.py question resolve Q1 --interpretation '실제 답변의 뜻과 적용 범위' --changed --updates .harness/work/intake.json .harness/work/task.json .harness/work/model-spec.md --checks allocation
@@ -66,7 +80,7 @@ python3 .harness/flow.py resume --note '원문과 조건·검사 변경을 대�
 - `--unchanged`: 원래 정의와 같다는 근거가 있을 때. 중단한 단계로 돌아간다.
 - `question conflict Q1 --note '원문 S1과 상충하는 내용'`: 모순을 남기고 확인 질문을 한다. 기존 원문을 지우지 않는다.
 
-모든 blocking 질문이 resolved여야 resume이 된다. resolve는 반영 파일 해시와 검사 ID를 기록할 뿐 올바른 구현이나 검증 통과를 뜻하지 않는다. 답변이 오지 않으면 관련 필수 기능은 미완료로 남는다. questions.md는 생성된 보기이므로 직접 편집하지 않는다.
+모든 blocking 질문이 resolved여야 resume이 된다. resolve는 최신 답변의 clear/delegated 검토와 반영 파일 해시·검사 ID를 요구하지만 올바른 구현이나 검증 통과를 뜻하지 않는다. 답변이 오지 않으면 관련 필수 기능은 미완료로 남는다. questions.md는 생성된 보기이므로 직접 편집하지 않는다.
 
 ### 비동기 문서 전달
 
@@ -87,7 +101,26 @@ python3 .harness/flow.py question import --source user-copied-hr
 
 ## 3. 모델·계약·병렬 구현
 
-model-spec.md에 변수/규칙/목표, solver-native 상태, feasible/optimal/proven-infeasible 구분, 실패·fallback·데이터 revision을 적는다. 실제 설치 환경과 작은 실행으로 OR-Tools/Timefold/baseline 중 고른다. 둘 다 구현하지 않는다.
+model-spec.md에 변수/규칙/목표, solver-native 상태, feasible/optimal/proven-infeasible 구분, 실패·fallback·데이터 revision을 적는다. 문제 구조와 실행 환경으로 OR-Tools/Timefold/baseline 중 후보를 선택한다. 버전 확인은 먼저 가능하지만 실제 업무 모델은 작은 실험도 아래 검토 후 실행한다. 둘 다 구현하지 않는다.
+
+에이전트가 spec-review.json을 채운다. rules의 id는 intake의 rule ID이며 모든 규칙을 한 번씩 포함한다. meaning에는 적용 대상·단위·경계·예외를 분명히 적고, example/expected와 boundary/boundary_expected에는 실제 작은 사례와 판정 결과를 적는다. 무관한 항목도 이유를 적는다. 필드 모양은 다음과 같다.
+
+```json
+{
+  "schema_version": 1,
+  "rules": [{"id": "K1", "meaning": "실제 규칙의 범위와 뜻", "example": "작은 정상 입력", "expected": "예상 결과", "boundary": "경계 또는 반례", "boundary_expected": "그 판정", "question_ids": []}],
+  "objective": "목표 순서와 가중치 근거",
+  "coupling": "공동 또는 단계별 결정, 공유 제약과 포기하는 보장",
+  "failure": "잘못된 입력·해 없음·시간초과·fallback 소진·오래된 결과 처리",
+  "hr": {"question_ids": [], "summary": "확인한 모호함과 근거; 질문이 필요 없었다면 그 이유"}
+}
+```
+
+```bash
+python3 .harness/flow.py review-model --note '원문·정상/경계 사례·목표·HR 반영 대조'
+```
+
+모든 blocking 질문 이력을 question_ids에 연결하고 해결해야 한다. 원문만으로 명확하면 이유를 남기며 억지로 HR 질문을 만들지 않는다. DM 없음도 검토는 생략하지 않는다. 소스·명세·질답과 검토 해시가 다르면 다시 검토해야 한다. 실제 업무 알고리즘은 baseline도 `run --purpose solve`로 감싼다. 비업무 환경 검사나 독립 작업만 `--engine baseline --purpose utility`로 실행한다. 솔버 엔진에 utility를 붙일 수 없다. 임의의 직접 셸 실행을 차단하는 샌드박스나 자연어 정답 판정기는 아니다.
 
 contract.json의 revision, owner, requirement_ids, input, output, failure_behavior를 채운다. 예제가 아니라 실제 서비스 인터페이스여야 한다.
 
@@ -104,6 +137,17 @@ python3 .harness/flow.py worker integration --status running --task '저장과 �
 ## 4. 시간과 실패
 
 ### 작업별 시간 계획과 재산정
+
+실제 마감과 유연한 목표를 구분한다. 마감이 없으면 목표 초과로 실행을 막지 않으며 에이전트가 전체 목표도 조정한다. 실제 경과·시작 시각·변경 이력은 보존한다. 필요한 디자인·사용성은 필수 작업에 포함하고, 선택 꾸미기만 여유에 맞춘다. 단계별 분 수를 고정하지 않는다.
+
+```bash
+# 현재부터 남은 시간을 추정해 유연한 목표 조정
+python3 .harness/flow.py schedule --remaining-minutes 240 --mode flexible --reason '필수 화면과 실제 데이터 검증 포함'
+# 실제 마감 변경/해제는 실제 시간 지시를 보존한 파일이 있을 때만
+python3 .harness/flow.py schedule --remaining-minutes 90 --mode fixed --reason '새로 제공된 실제 제한시간' --source-file inputs/time-instruction.txt
+```
+
+source-file은 실제 사용자 지시·공식 안내를 담은 텍스트 파일이다. 파일의 존재만으로 진위를 인증하지는 않는다. 시간이 부족하다는 이유로 AI가 연장 지시를 만들어서는 안 된다. `plan`은 작업 배분만 갱신하고 목표/마감을 바꾸지 않는다.
 
 자료를 처음 훑은 뒤 남은 작업의 추정 범위를 만들고, 분석·작은 실행 결과가 나올 때 보정한다. 에이전트가 `.harness/work/time-plan-input.json`을 작성한다. 사용자가 JSON을 작성할 필요는 없다. 다음은 형식 예시이며 실제 계획에는 분석부터 검증·인계까지 남은 필수 작업과 선택 작업을 포함한다.
 
@@ -131,7 +175,7 @@ python3 .harness/flow.py plan --file .harness/work/time-plan-input.json --reason
 - phase는 기존 6단계 ID, status는 pending/running/done/deferred, priority는 required/optional이다. done/deferred는 남은 시간이 `[0,0]`이다. 필수 작업은 deferred로 숨길 수 없다. 계획의 done은 검증 통과 증거가 아니다.
 - depends_on은 작업 ID다. 같은 session은 배열 순서대로 직렬 실행한다고 계산하고, 다른 session은 의존관계 안에서 병렬 가능하다고 가정한다. 단일 AI 세션이면 같은 담당을 사용한다. 실제로 준비되지 않은 병렬 인력을 가정하지 않는다. 순환하는 의존·담당 순서는 거부한다.
 - 매번 **그 시점에 남은** 작업을 추정한다. 시간이 흘렀다고 자동 차감하지 않는다. 보수적 추정과 예비 시간을 합해 남은 예산과 비교한다. 예산 초과는 숨기지 않고 표시한다.
-- 예비 시간은 장애·재작업 여유이고 검증·인계는 별도 작업이다. 검증·인계의 보수적 잔여 추정+예비 시간만 남으면 선택 기능을 중지한다. 계획이 없을 때만 기존 30분 기준을 임시 사용한다.
+- 예비 시간은 장애·재작업 여유이고 검증·인계는 별도 작업이다. 실제 마감까지 검증·인계의 보수적 잔여 추정+예비 시간만 남으면 선택 기능을 중지한다. 계획이 없을 때만 30분을 임시 사용한다. flexible에서는 필요 범위와 전체 목표를 다시 잡는다.
 - 모델·질답·단계 변경 또는 review_after_minutes 경과 시 재산정 필요를 표시한다. 실패·대표 입력 실행·지연에서도 에이전트가 재산정한다. 모르는 HR 대기시간은 숫자로 꾸미지 않고 조건부 추정으로 표시한다.
 - 재산정은 원래 마감·질문 차단·수용 검사를 바꾸지 않는다. 이전 계획과 이유는 events.jsonl에 보관한다. 시간 계획만 바꿔서는 검사 근거가 만료되지 않는다.
 
@@ -140,7 +184,7 @@ python3 .harness/flow.py run --session solver --engine ortools-cp-sat --label '�
 python3 .harness/flow.py history
 ```
 
-실제 argv/cwd/종료/로그/경과/입력 해시를 기록하고 2초마다 heartbeat를 갱신한다. 종료 코드를 바꾸어 성공으로 꾸미지 않는다. 30초 외부 제한이면 내부 탐색은 더 짧게 두어 결과 직렬화·검증 시간을 남긴다. 외부 kill은 최종 후보 저장을 보장하지 않는다. 남은 전체 작업 예산보다 긴 run은 거부한다.
+실제 argv/cwd/종료/로그/경과/입력 해시를 기록하고 2초마다 heartbeat를 갱신한다. 종료 코드를 바꾸어 성공으로 꾸미지 않는다. 30초 외부 제한이면 내부 탐색은 더 짧게 두어 결과 직렬화·검증 시간을 남긴다. 외부 kill은 최종 후보 저장을 보장하지 않는다. fixed 마감까지 남은 시간보다 긴 run은 거부하고 실행 중 fixed 마감이 도래하면 중지한다. flexible 목표는 실행을 막지 않지만 개별 run의 외부 제한은 항상 적용된다. solve 중 새 blocking 질문이 생기면 세션 이름과 무관하게 그 실행을 중지한다.
 
 Linux/macOS는 프로세스 그룹을 종료한다. Windows 자식 종료와 다중 호스트는 별도 검증되지 않았다. history는 동일 fingerprint의 성공·무변경·정상 로그 표본에 한해 최소/중앙/최대를 보여준다. 미래 ETA나 최적해 도달 보장이 아니다. 설치/첫 빌드/모델 구성/solve/독립 검증은 따로 측정한다.
 
@@ -158,7 +202,7 @@ python3 .harness/runner.py audit
 python3 .harness/flow.py event verified --note '현재 소스의 필수 검사·산출물 확인'
 ```
 
-audit는 테스트뿐 아니라 미해결 결정, 일시중지, 오래된 intake/contract, 미완료 세션을 확인한다. 소스·요구·모델·계약·질답 의미가 바뀌면 이전 증거는 stale이다. 상태판 갱신이나 DM 유무 변경만으로는 증거가 만료되지 않는다. 검증 중 애매함이 나오면 현재 DM 설정에 맞춰 질문·결정 절차를 따른다.
+audit는 테스트뿐 아니라 미해결 결정, 일시중지, 오래된 intake/contract와 명세·HR 검토, 미완료 세션을 확인한다. 소스·요구·모델·계약·질답 의미가 바뀌면 이전 증거는 stale이다. 상태판 갱신이나 DM 유무 변경만으로는 증거가 만료되지 않는다. 검증 중 애매함이 나오면 현재 DM 설정에 맞춰 질문·결정 절차를 따른다.
 
 시간 계획에서 보호한 검증·인계 예산에 들어가면 새 기능을 줄이고 실제 제출 파일, 실행 명령, 알려진 한계를 정리한다. `runner.py report`는 검증 보기, `runner.py close`는 로컬 작업 종료일 뿐 공식 제출이나 전체 AI 종료가 아니다. 실제 제출은 사용자가 한다. no-AI 평가가 시작되면 도움을 중단한다.
 
