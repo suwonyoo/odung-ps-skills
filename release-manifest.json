@@ -1,7 +1,7 @@
 {
-  "version": "3.2.0",
+  "version": "3.2.1",
   "sha256": {
-    "harness.py": "fed1e4d2706904751a830ad11f5f6231e6858e6cdd6bc3581ca6638468cc37ab",
+    "harness.py": "62c72aa053701a9aff1a7764e45355cb3ac22f105b3ed520f12d072a151bda56",
     "workflow.py": "9039daf319936f3e9e864f1b139c7e275e8edc597bb027cac4c8d0fc2fdb26f0",
     "coordination.py": "cf5307ff5f2138e18448ba16e3f22fc31a8e30133f37a44d9481f600570f1b05",
     "templates/task-AGENTS.md": "07936f239425a6a446523889634b0936b69547fdb58a5e03088db0a6a03bbae6",
@@ -9,7 +9,7 @@
     "docs/START_HERE_KO.md": "a10278186a9af1db6f30710ef5d3895791f20a5d74dbcc568d4171107898ab4f",
     "SOURCES.md": "a65881f511e462b7d57eb33ee6e6a1ddd736175ad15def4b42d5f5fef873923c",
     "LICENSE": "66c9b1cf84d1550027eb2b21ca06974e868825db5523aac3cb4962a3bb964ba8",
-    "VERSION": "33bdaf9e2d6bcbde2e4e613e865e403f8fe21fc621078d34c30b0bdc7f68d903",
+    "VERSION": "3822728783049fc2f22a56d1ee74d62352c49fbf81c6b54b50830d6f61c3af22",
     ".agents/skills/solver-modeling/SKILL.md": "928a1d3dd855dfe2be9184a885419fdad9a2f70ca8d779066d65ce22eb193cb4",
     ".agents/skills/solver-modeling/agents/openai.yaml": "b66da2895fcdf1c2fd93deac20267d859b1f5bba3c2c0095a84e5a68ce81c0f5",
     ".agents/skills/solver-modeling/references/solver-selection.md": "3cfe398eea2e27946d8a8cbacb8edfd509e58a152e63673af485e51b8ad07e86",

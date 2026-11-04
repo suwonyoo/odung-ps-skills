@@ -4,13 +4,16 @@
 
 ## 시작
 
-별도 과제 폴더에 설치한다. Python 3.10+가 필요하며 기존 파일은 덮어쓰지 않는다.
+별도 과제 폴더에 설치한다. Python 3.10+와 Codex CLI가 필요하며 기존 파일은 덮어쓰지 않는다. 새 과제 폴더가 필요하면 다음처럼 만든다. 이미 제공된 작업 폴더가 있으면 그 경로를 사용한다.
 
 ```bash
-python3 scripts/install.py --target /path/to/task --apply
-cd /path/to/task
+mkdir -p ../task-workspace
+python3 scripts/install.py --target ../task-workspace --apply
+cd ../task-workspace
 codex
 ```
+
+이미 설치된 과제 폴더는 다시 설치하지 않고 그 폴더에서 `codex`를 연다.
 
 Codex에 말한다. 경로·결과·시간·DM 유무만 실제 상황으로 바꾼다.
 
