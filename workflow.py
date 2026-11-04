@@ -135,6 +135,7 @@ def render(root):
              f"시간 정책: {'종료 시각 기준 기록' if closed else '설정 마감 경과 · 실행 금지' if fixed and remaining <= 0 else '유연한 목표 경과 · 계속 가능, 계획 재산정' if not fixed and remaining <= 0 else '작업별 계획 참조' if state.get('time_plan') else '임시 기준: 검증·인계 시간 보호' if fixed and remaining <= 1800 else '작업 규모에 따라 재산정'}", '']
     lines += planning.render(state, clock_end)
     lines += [aq.inbox_status(root, state), '질문 문서: .harness/work/hr-outbox.md / 받은 원문: .harness/work/hr-inbox.md',
+              '메인 흐름·디자인 인계: .harness/work/main-session.md (메인 세션이 작성; 갱신 시각 확인)',
               "", "| 질문 | 상태 | 발견 단계 | 중단 작업 | 영향 |", "|---|---|---|---|---|"]
     for q in state.get('questions', {}).values():
         lines.append('| ' + ' | '.join(h.md_cell(x) for x in (q['id'], q['status'], q['phase'], ', '.join(q['blocks']), q['impact'])) + ' |')
@@ -191,7 +192,7 @@ def start(root, minutes=None, time_mode=None):
             print(render(root))
             return 0
         templates = Path(__file__).resolve().parent / "templates"
-        for name in ("model-spec.md", "spec-review.json", "architecture.md", "questions.md", "AI_collaboration.md", "limits.md", "contract.json", "intake.json", "GLOSSARY.md"):
+        for name in ("main-session.md", "model-spec.md", "spec-review.json", "architecture.md", "questions.md", "AI_collaboration.md", "limits.md", "contract.json", "intake.json", "GLOSSARY.md"):
             dest = path(root, name)
             if not dest.exists():
                 content = (templates / name).read_bytes()

@@ -101,6 +101,12 @@ python3 .harness/flow.py question import --source user-copied-hr
 
 ## 3. 모델·계약·병렬 구현
 
+메인 세션의 연속된 작업 기록은 `.harness/work/main-session.md`에 남긴다. 위쪽 최신 요약에는 목표·현재 단계·확정 규칙·선택·근거·다음 행동을, 디자인 인계 부분에는 화면 흐름·현재 계약 revision/해시·예시와 실제 데이터의 구분·진행 가능/대기 작업·파일 담당을 적는다. 아래 이력에는 첫 자료 검토, 중요한 결정, HR 반영, 명세 변경, 검사, 병렬 인계, 중단·재개를 시간순으로 추가한다. 정정도 새 항목으로 남긴다. 메인 세션만 갱신하며 매 명령을 복제하지 않는다.
+
+디자인 세션은 같은 과제 폴더에서 status를 갱신한 뒤 main-session.md, 실제 contract.json, questions.md, workers/를 읽는다. 요약의 갱신 시각을 확인하고 현재 명세·질문과 다르면 먼저 영향을 대조한다. 파일을 나눠 맡고 자기 변경·근거·인터페이스 요청은 worker의 --next 또는 메인 세션에 전달한다. 메인 세션은 체크포인트에서 이를 읽어 기록에 반영한다. 별도 터미널의 채팅이나 다른 worktree의 기록이 자동 공유되는 기능은 아니다.
+
+디자인 북마크는 `.harness/references/design/README.md`에 설치된다. 필요한 참조만 고르고, 선택한 URL과 적용 요소를 메인 기록에 남긴다. 메인 기록은 AI가 작성하고, 기존 events.jsonl에는 CLI가 실제 단계·질답·계획 변경을 계속 기록한다. main-session.md는 대화 전문의 자동 녹취가 아니며, 실제 실행 근거는 evidence/와 runs/에서 확인한다.
+
 model-spec.md에 변수/규칙/목표, solver-native 상태, feasible/optimal/proven-infeasible 구분, 실패·fallback·데이터 revision을 적는다. 문제 구조와 실행 환경으로 OR-Tools/Timefold/baseline 중 후보를 선택한다. 버전 확인은 먼저 가능하지만 실제 업무 모델은 작은 실험도 아래 검토 후 실행한다. 둘 다 구현하지 않는다.
 
 에이전트가 spec-review.json을 채운다. rules의 id는 intake의 rule ID이며 모든 규칙을 한 번씩 포함한다. meaning에는 적용 대상·단위·경계·예외를 분명히 적고, example/expected와 boundary/boundary_expected에는 실제 작은 사례와 판정 결과를 적는다. 무관한 항목도 이유를 적는다. 필드 모양은 다음과 같다.
