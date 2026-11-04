@@ -4,7 +4,7 @@ This repository is a reusable toolkit for structured implementation from problem
 
 ## Starting a task from this checkout
 
-If the user supplies a brief/problem, desired outputs and says to start or continue (for example, “문제 파일은 inputs/에 있고 결과는 배정표야. 시작하자”), use `.agents/skills/task-start/SKILL.md`. Do not require a competition name, an AI-permission declaration for ordinary development, or an explicit skill invocation. Do not trigger this workflow for an unrelated small edit or toolkit maintenance.
+When the user hands over or points to actual task files for implementation in this workflow (for example, “문제 자료는 inputs/에 있어”), use `.agents/skills/task-start/SKILL.md`. Derive the goal, required deliverables, constraints and time budget from accessible files before asking. Do not require a separate desired-output statement, magic start phrase, startup questionnaire, competition name or explicit skill invocation. Do not trigger on merely opening this repository, bundled examples, reference-only attachments, summary-only requests, unrelated small edits or toolkit maintenance.
 
 Locate the actual task directory from the user's supplied paths. Install additively with `python3 scripts/install.py --target ABSOLUTE_TASK_DIRECTORY --apply` when permitted, then work there. If only this kit exists, create a separate sibling `task-workspace` and tell the user where it is; do not copy confidential task content into this public checkout. Do not start the task clock while merely preparing the toolkit. Never infer that connecting a repository executes code: the agent must read these instructions and invoke the workflow.
 

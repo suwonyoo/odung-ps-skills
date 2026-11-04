@@ -1,4 +1,4 @@
 interface:
   display_name: "문제 분석과 구현 진행"
   short_description: "자료 분석부터 구현·검증까지 단계와 시간을 함께 관리합니다"
-  default_prompt: "$task-start로 제공 자료와 원하는 결과에 맞춰 현재 작업을 진행해 줘."
+  default_prompt: "$task-start로 제공한 문제 파일을 읽고 목표와 필수 산출물을 찾아 작업을 시작해 줘."

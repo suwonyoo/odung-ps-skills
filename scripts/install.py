@@ -93,7 +93,7 @@ def install(target, apply=False):
             path.unlink(missing_ok=True)
         raise
     print("Installed. Supplied project files are preserved; a workflow AGENTS.md was added only if absent.")
-    print("Next: give Codex your problem files, desired outputs and time budget, then say start. Fallback: read .agents/skills/task-start/SKILL.md.")
+    print("Next: point Codex to your actual task files; goals, outputs and time are read from them. Fallback: read .agents/skills/task-start/SKILL.md.")
     return 0
 
 
