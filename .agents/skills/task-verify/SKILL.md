@@ -3,7 +3,7 @@ name: task-verify
 description: Validate implemented behavior in an active structured task workflow using real command output and clearly attributed user observations. Preserve failures and unknowns before claiming completion. No competition context is required. Respect an actual no-AI assessment restriction.
 ---
 
-Read the task, project instructions, `.harness/GUIDE.md`, and `.harness/work/task.json` when present. Do not call an absent runner. Respect a closed work phase and stop if the user has entered a no-AI assessment.
+Read the task, project instructions, `.harness/WORKFLOW_KO.md`, and `.harness/work/task.json` when present. Do not call an absent runner. Respect a closed work phase and stop if the user has entered a no-AI assessment.
 
 1. Map required behaviors to checks. Confirm each expected result comes from the task, a trusted reference, or a separately reasoned small example. Review the test assertion; a command returning zero without checking the requirement is insufficient.
 2. Select normal, boundary, and invalid input cases where they matter. Do not add ceremonial tests that repeat the implementation or test irrelevant cosmetic changes.

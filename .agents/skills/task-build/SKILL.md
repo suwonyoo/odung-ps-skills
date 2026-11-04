@@ -3,7 +3,7 @@ name: task-build
 description: Implement one bounded feature or fix using an active structured task workflow's acceptance conditions and shared contract. Use after intake and modeling or to fix a verified failure. No competition context is required. Respect an actual no-AI assessment restriction.
 ---
 
-Read the actual task, project instructions, and `.harness/GUIDE.md` when present. Check `.harness/work/state.json` before working; if its phase is closed, do not resume implementation through this workflow. If no harness exists, work within the task's instructions without inventing tool availability.
+Read the actual task, project instructions, and `.harness/WORKFLOW_KO.md` when present. Check `.harness/work/state.json` before working; if its phase is closed, do not resume implementation through this workflow. If no harness exists, work within the task's instructions without inventing tool availability.
 
 1. Select one required behavior and its acceptance condition. State the files you will own and the expected observable result.
 2. Preserve the existing stack and implement the smallest complete input-to-output path. Do not add a model API unless the task supplies and permits it.
@@ -19,6 +19,6 @@ With flow.py installed, register session ownership and update the board at task 
 
 ## v3 coordination
 
-Before each slice read status and HR blockers. If joins, units, shared constraints or a user-visible edge case are ambiguous, use stakeholder-bridge immediately. Continue independent tasks with disjoint ownership. Preserve contract revision across sessions; its owner integrates changes. Keep the first slice end-to-end; parallel UI must consume the frozen contract and use real output early.
+Before each slice read status and question blockers. If joins, units, shared constraints or a user-visible edge case are ambiguous, use stakeholder-bridge immediately. Continue independent tasks with disjoint ownership. Preserve contract revision across sessions; its owner integrates changes. Keep the first slice end-to-end; parallel UI must consume the frozen contract and use real output early.
 
 For a bug, establish a small command that detects the actual failure, isolate a cause, fix it and rerun affected behavior. Avoid a long debugging ceremony for a trivial typo. Mark a session done only after handing off changes and real evidence; process exit 0 leaves a timed worker waiting.

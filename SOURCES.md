@@ -1,42 +1,24 @@
-# Sources and authorship
+# Sources and licenses
 
-The toolkit code, skill instructions, templates, and synthetic practice data were written for this project. No contest tasks, private attachments, credentials, transcripts, or third-party source files are bundled.
+Original toolkit code, instructions, templates and synthetic data. No upstream skill package, hook, source code, actual task data, credentials or work transcripts are bundled. References informed selected procedures; they are not installed dependencies.
 
-Public references consulted for format and workflow concepts on 2026-10-30:
+## Workflow references reviewed 2026-11-04 (KST)
 
-- OpenAI Build skills: https://learn.chatgpt.com/docs/build-skills
-- OpenAI project instructions: https://learn.chatgpt.com/docs/agent-configuration/agents-md
-- OpenAI Subagents: https://learn.chatgpt.com/docs/agent-configuration/subagents
-- OpenAI skill evaluations: https://developers.openai.com/blog/eval-skills
-- OpenAI execution plans: https://developers.openai.com/cookbook/articles/codex_exec_plans
-- Git worktree: https://git-scm.com/docs/git-worktree
-- GitHub Spec Kit: https://github.com/github/spec-kit
-- Superpowers verification and debugging: https://github.com/obra/superpowers
+| Public source | Revision / license | Applied / excluded |
+|---|---|---|
+| [Matt Pocock skills](https://github.com/mattpocock/skills/tree/4ae2317ddb22b046e26455e4f9c9b3aaaf62212d) | `4ae2317ddb22b046e26455e4f9c9b3aaaf62212d`, MIT | Read grilling, domain-modeling, to-spec, to-tickets and diagnosing-bugs. Apply ready questions, vocabulary/decision capture, complete small slices and focused repros. Exclude exhaustive interview/approval loops and tracker setup dependency. |
+| [Superpowers](https://github.com/obra/superpowers/tree/22f0b463e7a5e579904dd6211a520321035526f7) | `22f0b463e7a5e579904dd6211a520321035526f7`, MIT | Review brainstorming, writing-plans, systematic-debugging, verification-before-completion and TDD/subagent procedures. Apply scope clarification, bounded work, cause-driven fixes and fresh evidence. Exclude full-package hooks, universal TDD, per-task review orchestration and separate design/plan approval gates. |
+| [OpenAI skills](https://learn.chatgpt.com/docs/build-skills), [AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md) | Official format/reference | Repository instructions and progressive skill loading. Native discovery in the actual managed client must be checked there. |
 
-These sources informed general design. No upstream skill implementation was copied. Superpowers is referenced for clarification, bounded tasks, systematic debugging and evidence before completion; its package and hooks are not installed. The installer does not download any dependencies. Optional solver examples depend on the separately installed packages listed below. Their licenses do not become the license of this original implementation. If you later copy code or a skill, record its exact URL, revision, files, license, and modifications here.
+These are adaptations of principles, not claims that every upstream procedure runs here. If copying upstream code/text later, preserve its license notice and record exact files and changes.
 
-Solver/workflow references checked on 2026-11-04 (KST):
+## Optional example dependencies
 
-| Source | Version / status | Use | License |
-|---|---|---|---|
-| https://github.com/google/or-tools | Python 9.15.6755 pinned | Optional CP-SAT example dependency | Apache-2.0 |
-| https://github.com/TimefoldAI/timefold-solver | Java 2.7.1 pinned; 2.8.0 newly published, not used in this prepared baseline | Optional local solver dependency | Apache-2.0 |
-| https://github.com/TimefoldAI/timefold-solver-python | Archived 2025-10-06 | Excluded from preparation path | Apache-2.0 |
-| https://github.com/FasterXML/jackson-databind | 2.20.1 pinned | Java example JSON input/output | Apache-2.0 |
-| https://github.com/qos-ch/slf4j | 2.0.17 pinned | Java example runtime logging | MIT |
+| Dependency | Pinned version | License |
+|---|---|---|
+| [OR-Tools](https://github.com/google/or-tools) | Python `9.15.6755` | Apache-2.0 |
+| [Timefold Solver](https://github.com/TimefoldAI/timefold-solver) | Java CE `2.7.1`; JDK 21+ | Apache-2.0 |
+| [Jackson Databind](https://github.com/FasterXML/jackson-databind) | `2.20.1` | Apache-2.0 |
+| [SLF4J](https://github.com/qos-ch/slf4j) | `2.0.17` | MIT |
 
-- https://developers.google.com/optimization/cp/cp_solver — integer models and native statuses.
-- https://developers.google.com/optimization/scheduling/employee_scheduling — CP-SAT also supports employee scheduling.
-- https://developers.google.com/optimization/routing/routing_options — Routing uses its own limits and statuses.
-- https://docs.timefold.ai/timefold-solver/latest/frequently-asked-questions — Java 21 baseline for 2.x; Community vs commercial products.
-- https://docs.timefold.ai/timefold-solver/latest/running-timefold-solver/overview — domain modeling and library/service use.
-- https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/overview — time/quality tradeoff and optimality limitations.
-
-Examples are original, deliberately small synthetic models. Solver binaries, upstream source archives, task data and actual work logs are not bundled. Installed transitive dependencies retain their own licenses. Pinning the top-level dependency does not lock every transitive dependency; record the resolved environment during rehearsal.
-
-Use the actual event rules and project instructions at runtime. Public documentation does not establish the capabilities or permissions of a particular managed environment.
-
-## v3 critical adaptation (2026-11-04)
-
-- Matt Pocock skills: https://github.com/mattpocock/skills at `4ae2317ddb22b046e26455e4f9c9b3aaaf62212d`, MIT. Read README/LICENSE and grilling, domain-modeling, to-spec, to-tickets, diagnosing-bugs SKILL.md. Original project instructions implement a bounded question frontier, vocabulary/decision capture, vertical slices and focused diagnosis; no upstream skill package or text is bundled. See docs/ADOPTION_REVIEW_KO.md for exclusions and tradeoffs.
-- https://learn.chatgpt.com/docs/build-skills — repository `.agents/skills`, explicit/implicit invocation and progressive disclosure rechecked. Actual managed contest client behavior remains untested; direct-file startup is the fallback.
+Install dependencies separately; the installer does not download them. Pinning these versions does not lock every transitive dependency. The archived Timefold Python port and commercial hosted model APIs are not used. Solver-specific behavior and status references are in the solver-selection skill reference. Examples are original, deliberately small models; performance on them does not establish full-size task performance.

@@ -24,17 +24,22 @@ except ModuleNotFoundError:
 import coordination as c
 
 PHASES = ("intake", "modeling", "parallel-build", "integrate", "verify", "finish")
+PHASE_LABELS = dict(zip(PHASES, ("자료 분석", "모델링", "구현", "통합", "검증", "마무리")))
+ANSWER_SOURCES = ("user-copied-hr", "user-decision", "provided-document")
+SOURCE_LABELS = {"user-copied-hr": "사용자가 전달한 담당자 답변 (직접 인증 아님)",
+                 "user-decision": "사용자 결정 (담당자 확인 아님)",
+                 "provided-document": "제공 문서 (외부 답변 아님)"}
 ROUTES = {
-    "start": ("intake", "task-intake", "Read supplied files; extract requirements; draft manual stakeholder questions."),
-    "inputs-reviewed": ("modeling", "solver-modeling", "Compare solvers and write the model specification; run a small real prototype."),
-    "hr-answer": (None, "stakeholder-bridge", "Record the user's verbatim answer separately from interpretation; assess affected constraints."),
-    "requirements-changed": ("modeling", "solver-modeling", "Revise the model, contract and acceptance checks; revalidate affected results."),
-    "contract-ready": ("parallel-build", "task-build", "Assign disjoint files to core and integration sessions; keep one contract owner."),
-    "candidate-ready": ("integrate", "task-build", "Connect the real solver result to storage and UI; independently validate before publication."),
-    "integrated": ("verify", "task-verify", "Run real data, boundaries, failure paths and state-change checks."),
-    "check-failed": (None, "task-build", "Reproduce; isolate one cause; make a focused fix; rerun the failed and affected checks."),
-    "claim-complete": ("verify", "task-verify", "Read actual evidence; unrun, stale or failed checks are not completion."),
-    "verified": ("finish", "task-finish", "Align requested deliverables with actual behavior and prepare manual submission."),
+    "start": ("intake", "task-intake", "문제와 데이터를 읽고 필수 조건·확인 방법을 정리합니다. 중요한 모호함만 질문합니다."),
+    "inputs-reviewed": ("modeling", "solver-modeling", "해결 방법을 선택하고 작은 입력으로 실제 실행해 봅니다."),
+    "hr-answer": (None, "stakeholder-bridge", "답변 원문과 해석을 분리하고 영향받는 조건을 확인합니다."),
+    "requirements-changed": ("modeling", "solver-modeling", "바뀐 조건을 모델·입출력 명세·검사에 반영하고 다시 확인합니다."),
+    "contract-ready": ("parallel-build", "task-build", "공유 입출력을 기준으로 파일 담당을 나누고 첫 전체 동작을 구현합니다."),
+    "candidate-ready": ("integrate", "task-build", "실제 계산 결과를 저장·조회와 연결하고 발행 전 규칙을 확인합니다."),
+    "integrated": ("verify", "task-verify", "정상 입력과 오류·경계·데이터 변경 상황을 검사합니다."),
+    "check-failed": (None, "task-build", "실패를 재현하고 원인을 좁혀 수정한 뒤 관련 검사를 다시 실행합니다."),
+    "claim-complete": ("verify", "task-verify", "현재 코드의 실제 검사 결과와 빠진 항목을 확인합니다."),
+    "verified": ("finish", "task-finish", "실제 결과와 문서를 맞추고 필요한 산출물을 인계합니다."),
 }
 WORKER_STATES = ("running", "waiting", "blocked", "done")
 ENGINES = ("ortools-cp-sat", "ortools-routing", "timefold", "baseline")
@@ -109,16 +114,19 @@ def effective_worker(root, worker):
 def render(root):
     state = read_state(root)
     now = utc()
-    closed = h.load_json(path(root, "state.json")).get("phase") == "closed"
-    remaining = (datetime.fromisoformat(state["deadline"]) - now).total_seconds()
-    elapsed = (now - datetime.fromisoformat(state["started_at"])).total_seconds()
+    session = h.load_json(path(root, "state.json"))
+    closed = session.get("phase") == "closed"
+    clock_end = datetime.fromisoformat(session["closed_at"]) if closed else now
+    remaining = (datetime.fromisoformat(state["deadline"]) - clock_end).total_seconds()
+    elapsed = (clock_end - datetime.fromisoformat(state["started_at"])).total_seconds()
     lines = ["# 작업 현황", "", f"갱신: {stamp(now)}", "",
-             f"단계: {'closed' if closed else state['phase']} ({PHASES.index(state['phase'])+1}/{len(PHASES)}) / 솔버: {state.get('engine') or '미선택'}",
-             f"진행: {'HR 답변 / 반영 대기' if state.get('paused') else '진행 가능'} / 모델 변경 번호: {state.get('model_revision',0)}",
-             f"전체 경과: {max(0, elapsed)/60:.1f}분 / 설정 마감까지: {remaining/60:.1f}분",
+             f"단계: {'종료' if closed else PHASE_LABELS[state['phase']]} ({PHASES.index(state['phase'])+1}/{len(PHASES)}) / 솔버: {state.get('engine') or '미선택'}",
+             f"진행: {'종료' if closed else '중요한 답변 / 반영 대기' if state.get('paused') else '진행 가능'} / 모델 변경 번호: {state.get('model_revision',0)}",
+             f"담당자 DM: {contact_label(state)}",
+             f"전체 경과: {max(0, elapsed)/60:.1f}분 / {'종료 시 남은 예산' if closed else '설정 마감까지'}: {remaining/60:.1f}분",
              f"다음 행동: {state['next_action']}", f"읽을 지침: {state['skill']}", "",
              "시간은 설정 예산과 실측값이다. 최적해 도달 ETA나 완료율을 의미하지 않는다.", "",
-             f"시간 정책: {'설정 마감 경과 · 실행 금지' if remaining <= 0 else '새 기능 중지 · 검증/제출 정리' if remaining <= 1800 else '첫 통합 결과 확인' if remaining <= 5400 else '핵심 기능 우선'}",
+             f"시간 정책: {'종료 시각 기준 기록' if closed else '설정 마감 경과 · 실행 금지' if remaining <= 0 else '새 기능 중지 · 검증/제출 정리' if remaining <= 1800 else '첫 통합 결과 확인' if remaining <= 5400 else '핵심 기능 우선'}",
              "", "| 질문 | 상태 | 발견 단계 | 중단 작업 | 영향 |", "|---|---|---|---|---|"]
     for q in state.get('questions', {}).values():
         lines.append('| ' + ' | '.join(h.md_cell(x) for x in (q['id'], q['status'], q['phase'], ', '.join(q['blocks']), q['impact'])) + ' |')
@@ -129,7 +137,7 @@ def render(root):
         age = (now - datetime.fromisoformat(w["updated_at"])).total_seconds()
         status = w["status"]
         if session_blockers(state, w['id']) and status != 'done':
-            status = 'blocked (HR)'
+            status = 'blocked (답변 필요)'
         if status == "running" and age > 120:
             status = "stale (확인 필요)"
         end = datetime.fromisoformat(w.get("finished_at") or stamp(now))
@@ -181,7 +189,8 @@ def start(root, minutes):
                      "skill": skill, "next_action": action, "started_at": stamp(now),
                      "deadline": stamp(now + timedelta(minutes=minutes)), "updated_at": stamp(now),
                      "engine": None, "contract_revision": None, "contract_sha256": None,
-                     "intake_review": None, "model_revision": 0, "questions": {}, "paused": None}, exclusive=True)
+                     "intake_review": None, "model_revision": 0, "questions": {}, "paused": None,
+                     "contact": {"mode": "unspecified", "note": "필요할 때만 확인"}}, exclusive=True)
         append_event(root, "start", {"budget_minutes": minutes})
         print(render(root))
     return 0
@@ -248,7 +257,7 @@ def select(root, engine, reason, alternative, evidence):
             raise h.KitError('Select an engine after intake review, in unpaused modeling')
         c.current_intake(root, state)
         state.update(engine=engine, phase="modeling", skill="solver-modeling",
-                     next_action="Complete the chosen model specification and a timed prototype; freeze the contract.",
+                     next_action="선택한 방법으로 작은 입력을 실행하고 공유 입출력 명세를 확정합니다.",
                      updated_at=stamp(), contract_revision=None, contract_sha256=None)
         h.write_json(path(root, "workflow.json"), state)
         append_event(root, "solver-selected", {"engine": engine, "reason": reason, "alternative": alternative, "evidence": evidence})
@@ -270,7 +279,7 @@ def worker(root, worker_id, status, task, files, next_action, *, run_id=None):
         if status == 'running':
             ensure_time(state)
             if session_blockers(state, worker_id):
-                raise h.KitError('Session blocked by HR: ' + ', '.join(session_blockers(state, worker_id)))
+                raise h.KitError('Session blocked by unresolved decisions: ' + ', '.join(session_blockers(state, worker_id)))
         target = path(root, f"workers/{worker_id}.json")
         old = effective_worker(root, h.load_json(target)) if target.exists() else {}
         if old.get("run_id") and old.get("status") == "running" and old["run_id"] != run_id:
@@ -306,16 +315,49 @@ def session_blockers(state, session):
     return [q['id'] for q in c.blockers(state) if '*' in q['blocks'] or session in q['blocks']]
 
 
+def contact_label(state):
+    return {"none": "없음 · 문서 근거와 사용자 결정으로 진행",
+            "manual": "있음 · 사용자가 직접 전달",
+            "unspecified": "미설정 · 필요할 때만 확인"}.get(state.get('contact', {}).get('mode', 'unspecified'), '미설정')
+
+
+def question_next(state):
+    if state.get('contact', {}).get('mode') == 'none':
+        return 'DM 요청 없이 문서 근거를 확인합니다. 결과를 바꾸는 중요한 미결정만 사용자에게 묻고 반영 후 재개합니다.'
+    return '질문 원문 전달 → 실제 답변 또는 문서 근거 기록 → 명세·검사 반영 → 재개. 독립 작업은 계속합니다.'
+
+
+def contact(root, mode, note):
+    """Remember contact availability; never erase or resolve existing questions."""
+    h.require_working(root)
+    if mode not in ('manual', 'none'):
+        raise h.KitError('Contact mode must be manual or none')
+    h.nonempty_string(note, 'contact note')
+    with locked(root):
+        state = read_state(root)
+        state['contact'] = {'mode': mode, 'note': note, 'updated_at': stamp()}
+        if state.get('paused'):
+            state['next_action'] = question_next(state)
+        state['updated_at'] = stamp()
+        h.write_json(path(root, 'workflow.json'), state)
+        append_event(root, 'contact-mode', {'mode': mode, 'note': note})
+        render_questions(root, state)
+        print(render(root))
+    return 0
+
+
 def render_questions(root, state):
-    lines = ['# 수동 HR 질답', '', '자동 생성된 보기. 원본 상태는 workflow.json, 사용자 답변은 원문 그대로 보존한다.', '']
+    lines = ['# 질문과 결정', '', '자동 생성된 보기. 원본 상태는 workflow.json이며 원문과 해석을 구분한다.',
+             '', '담당자 DM: ' + contact_label(state), '']
     for q in state['questions'].values():
         lines += [f"## {q['id']} · {q['status']}", '', q['text'], '',
                   f"- 발견 단계: {q['phase']}", f"- 영향: {q['impact']}",
                   f"- 멈추는 작업: {', '.join(q['blocks']) or '없음'}",
                   f"- 미응답 가정 / 제한: {q['assumption']}", f"- 선행 질문: {', '.join(q['requires']) or '없음'}"]
         for answer in q.get('answers', []):
-            lines += ['', f"### 사용자 전달 원문 · 기록시각 {answer['recorded_at']}", '',
-                      '출처: user-copied-hr (HR에게서 직접 취득하거나 인증한 기록이 아님)', '',
+            actor = answer.get('actor', 'user-copied-hr')
+            lines += ['', f"### 근거 원문 · 기록시각 {answer['recorded_at']}", '',
+                      f"출처: {actor} · {SOURCE_LABELS.get(actor, actor)}", '',
                       *['> ' + line for line in answer['text'].splitlines()]]
         if q.get('interpretation'):
             lines += ['', '### AI 해석 / 반영', '', q['interpretation'],
@@ -363,8 +405,11 @@ def question(root, args):
                 answerfile = h.safe_path(root, args.file)
                 text = answerfile.read_text(encoding='utf-8')
                 h.nonempty_string(text, 'answer')
+                actor = getattr(args, 'source', None) or ('user-decision' if state.get('contact', {}).get('mode') == 'none' else 'user-copied-hr')
+                if actor not in ANSWER_SOURCES:
+                    raise h.KitError('Unknown answer source')
                 q['answers'].append({'text': text, 'path': args.file, 'sha256': h.digest_file(answerfile),
-                                     'actor': 'user-copied-hr', 'recorded_at': stamp()})
+                                     'actor': actor, 'recorded_at': stamp()})
                 q['status'] = 'answered'
             elif args.action == 'conflict':
                 h.nonempty_string(args.note, 'conflict note')
@@ -374,7 +419,7 @@ def question(root, args):
                     state['paused'] = {'phase': state['phase'], 'skill': state['skill'], 'at': stamp()}
             elif args.action == 'resolve':
                 if q['status'] != 'answered':
-                    raise h.KitError('A real copied answer is required before resolution')
+                    raise h.KitError('Record an actual stakeholder reply, user decision or supplied document before resolution')
                 h.nonempty_string(args.interpretation, 'interpretation')
                 task = h.validate_task(root)
                 c.refs(args.checks, {x['id'] for x in task['checks']+task['manual_checks']}, 'resolution checks')
@@ -389,7 +434,7 @@ def question(root, args):
                     if state.get('paused'):
                         state['paused']['return_to_modeling'] = True
         if state.get('paused'):
-            state.update(skill='stakeholder-bridge', next_action='질문 원문 전달 → 사용자 답변 복사 → 해석/명세/검사 반영 → resume. 독립 작업만 계속.')
+            state.update(skill='stakeholder-bridge', next_action=question_next(state))
         state['updated_at'] = stamp()
         h.write_json(path(root, 'workflow.json'), state)
         append_event(root, 'question-' + args.action, {'id': args.id, 'status': q['status']})
@@ -410,7 +455,7 @@ def resume(root, note):
             phase = 'modeling' if paused.get('return_to_modeling') else paused['phase']
             skill = 'solver-modeling' if paused.get('return_to_modeling') else paused['skill']
             state.update(phase=phase, skill=skill, paused=None, updated_at=stamp(),
-                         next_action='Re-review intake/contract if changed; rerun affected checks, then continue from the recorded phase.')
+                         next_action='조건·입출력 명세가 바뀌었는지 확인하고 관련 검사를 다시 실행한 뒤 기존 단계에서 이어갑니다.')
             h.write_json(path(root, 'workflow.json'), state)
             append_event(root, 'resumed', {'note': note, 'phase': phase})
         print(render(root))
@@ -645,12 +690,14 @@ def main(argv=None):
     sub.add_parser('recover-lock')
     rr = sub.add_parser('recover-run'); rr.add_argument('id'); rr.add_argument('--note', required=True)
     rs = sub.add_parser('resume'); rs.add_argument('--note', required=True)
+    ct = sub.add_parser('contact'); ct.add_argument('--mode', choices=('manual', 'none'), required=True); ct.add_argument('--note', required=True)
     q = sub.add_parser('question'); qa = q.add_subparsers(dest='action', required=True)
     ask = qa.add_parser('ask'); ask.add_argument('id')
     for name in ('text', 'impact', 'assumption'): ask.add_argument('--'+name, required=True)
     ask.add_argument('--blocks', nargs='+'); ask.add_argument('--requires', nargs='*', default=[])
     ask.add_argument('--nonblocking', action='store_true')
     ans = qa.add_parser('answer'); ans.add_argument('id'); ans.add_argument('--file', required=True)
+    ans.add_argument('--source', choices=ANSWER_SOURCES)
     res = qa.add_parser('resolve'); res.add_argument('id'); res.add_argument('--interpretation', required=True)
     change = res.add_mutually_exclusive_group(required=True)
     change.add_argument('--changed', action='store_true'); change.add_argument('--unchanged', dest='changed', action='store_false')
@@ -665,6 +712,7 @@ def main(argv=None):
         if args.command == "doctor": return doctor()
         if args.command == "start": return start(root, args.minutes)
         if args.command == 'question': return question(root, args)
+        if args.command == 'contact': return contact(root, args.mode, args.note)
         if args.command == 'resume': return resume(root, args.note)
         if args.command == 'recover-lock': return recover_lock(root)
         if args.command == 'recover-run': return recover_run(root, args.id, args.note)
@@ -677,6 +725,8 @@ def main(argv=None):
         if args.command == "history": return history(root)
         if args.command == "status":
             while True:
+                if args.watch and sys.stdout.isatty():
+                    print('\033[2J\033[H', end='')
                 print(render(root), flush=True)
                 if not args.watch: return 0
                 time.sleep(5)

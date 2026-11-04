@@ -17,7 +17,6 @@ def installation_files():
              ".harness/coordination.py": SOURCE / "coordination.py",
              "AGENTS.md": SOURCE / "templates/task-AGENTS.md",
              ".harness/WORKFLOW_KO.md": SOURCE / "docs" / "WORKFLOW_KO.md",
-             ".harness/GUIDE.md": SOURCE / "docs" / "SHARED_GUIDANCE.md",
              ".harness/START_HERE_KO.md": SOURCE / "docs" / "START_HERE_KO.md",
              ".harness/SOURCES.md": SOURCE / "SOURCES.md",
              ".harness/LICENSE": SOURCE / "LICENSE",

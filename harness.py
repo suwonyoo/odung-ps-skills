@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 if __name__ == '__main__':
     sys.modules.setdefault(Path(__file__).stem, sys.modules[__name__])
 
-VERSION = "3.1.0"
+VERSION = "3.2.0"
 IGNORED_DIRS = {".git", ".harness", "node_modules", ".venv", "venv", "__pycache__",
                 ".pytest_cache", ".mypy_cache", ".ruff_cache", "dist", "build", "target", ".next", "coverage"}
 MAX_LOG_BYTES = 8 * 1024 * 1024

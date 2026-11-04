@@ -49,6 +49,62 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(w.read_state(self.root)['phase'],'intake')
         with self.assertRaises(h.KitError):w.select(self.root,'baseline','x','y','z')
 
+    def test_no_dm_mode_persists_without_resetting_clock_or_creating_questions(self):
+        before=w.read_state(self.root)['deadline']
+        w.contact(self.root,'none','User says no stakeholder DM exists')
+        w.start(self.root,210)
+        state=w.read_state(self.root)
+        self.assertEqual(state['contact']['mode'],'none')
+        self.assertEqual(state['deadline'],before)
+        self.assertEqual(state['questions'],{})
+        self.assertIsNone(state['paused'])
+        self.assertIn('담당자 DM: 없음',w.render(self.root))
+
+    def test_no_dm_mode_does_not_silently_clear_a_pending_hard_rule(self):
+        self.ask()
+        w.contact(self.root,'none','No external contact is available')
+        state=w.read_state(self.root)
+        self.assertEqual(state['questions']['Q1']['status'],'pending')
+        self.assertIsNotNone(state['paused'])
+        self.assertIn('DM 요청 없이',state['next_action'])
+        with self.assertRaises(h.KitError):w.resume(self.root,'skip without a decision')
+
+    def test_no_dm_user_decision_is_not_attributed_to_hr(self):
+        verify_phase(self.root)
+        w.contact(self.root,'none','No DM')
+        self.ask();self.answer(text='I choose half-open intervals for this local task.')
+        self.resolve();w.resume(self.root,'User decision applied')
+        state=w.read_state(self.root)
+        self.assertEqual(state['phase'],'verify')
+        self.assertEqual(state['questions']['Q1']['answers'][0]['actor'],'user-decision')
+        notes=w.path(self.root,'questions.md').read_text()
+        self.assertIn('사용자 결정 (담당자 확인 아님)',notes)
+        self.assertNotIn('user-copied-hr',notes)
+
+    def test_document_answer_changes_model_without_inventing_external_reply(self):
+        verify_phase(self.root);h.check_command(self.root,[])
+        w.contact(self.root,'none','No DM');self.ask()
+        (self.root/'rule.txt').write_text('Intervals are half open.')
+        w.question(self.root,argparse.Namespace(action='answer',id='Q1',file='rule.txt',source='provided-document'))
+        self.resolve(changed=True);w.resume(self.root,'Supplied document reconciled')
+        state=w.read_state(self.root)
+        self.assertEqual(state['questions']['Q1']['answers'][0]['actor'],'provided-document')
+        self.assertEqual(state['phase'],'modeling')
+        self.assertEqual(h.audit_result(self.root)['checks'][0]['state'],'stale')
+
+    def test_contact_availability_alone_does_not_change_semantic_evidence(self):
+        verify_phase(self.root);h.check_command(self.root,[])
+        w.contact(self.root,'none','No external contact')
+        self.assertTrue(h.audit_result(self.root)['local_checks_satisfied'])
+        w.contact(self.root,'manual','Contact became available')
+        self.assertTrue(h.audit_result(self.root)['local_checks_satisfied'])
+
+    def test_unknown_answer_source_cannot_mutate_question(self):
+        self.ask();(self.root/'answer.txt').write_text('Invented answer')
+        with self.assertRaises(h.KitError):
+            w.question(self.root,argparse.Namespace(action='answer',id='Q1',file='answer.txt',source='invented'))
+        self.assertEqual(w.read_state(self.root)['questions']['Q1']['answers'],[])
+
     def test_composite_model_requires_known_edges_and_coverage(self):
         d=intake(self.root)
         d['components'].append({'id':'C2','kind':'storage','decision':'Persist result','inputs':'C1 integer','outputs':'stored value','depends_on':['C1'],'requirement_ids':['R1']})

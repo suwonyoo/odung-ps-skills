@@ -22,7 +22,19 @@ python3 .harness/flow.py select ortools-cp-sat --reason '실제 선택 근거' -
 
 첫 전환은 빈 분석, 없는 자료 파일, 잘못된 요구/검사 연결, 실행 순환을 거부한다. source 파일 해시를 보관하여 변경을 감지한다. 내용이 의미상 옳은지는 사람이 판단해야 한다. 원문에 없는 조건을 채워 통과시키면 안 된다.
 
-## 2. 어떤 단계에서도 HR 질문
+## 2. 질문과 DM 유무
+
+사용자가 DM 유무를 알려주면 한 번 기록하고 다음 단계·재개에서도 유지한다. 불명확한 문제가 없으면 DM 유무를 먼저 묻는 절차도 필요 없다.
+
+```bash
+python3 .harness/flow.py contact --mode none --note '사용자: 담당자 DM 없음'
+# 실제로 채널을 사용할 수 있게 된 경우에만 변경
+python3 .harness/flow.py contact --mode manual --note '사용자: 내가 담당자에게 직접 질문 가능'
+```
+
+none이면 외부 질문 요청을 반복하지 않는다. 문서에 답이 있으면 적용하고, 되돌릴 수 있는 구현 선택은 AI 가정으로 짧게 기록한다. 결과의 정답을 바꾸는 중요한 미결정은 사용자에게 쉬운 선택지로 묻는다. “이번 질문은 추천대로 해”라는 실제 위임은 사용자 결정으로 기록할 수 있다. 단, DM 없음이나 건너뛰기는 필수 제약 삭제·기존 blocking 질문 해소·검증 성공을 의미하지 않는다. 외부에서만 확인할 수 있는 핵심 사실은 미확인으로 남기고 독립 작업을 진행한다.
+
+어느 단계든 중요한 모호함을 발견하면 다음처럼 기록한다.
 
 ```bash
 python3 .harness/flow.py question ask Q1 --text '인원이 부족하면 부분 배정을 허용하나요?' --impact '완전 배정 hard 규칙과 실패 응답' --assumption '답변 전 부분 배정 발행 금지' --blocks core solver integration
@@ -35,10 +47,13 @@ blocking 질문이 있으면 전체 단계 전환은 잠긴다. `--nonblocking`�
 사용자가 직접 DM을 보내고 원문을 붙여 주면, 에이전트가 그 내용을 과제 폴더에 저장한다. 아래 파일은 **실제로 받은 원문**이어야 한다.
 
 ```bash
-python3 .harness/flow.py question answer Q1 --file inputs/hr/Q1.txt
+python3 .harness/flow.py question answer Q1 --file inputs/hr/Q1.txt --source user-copied-hr
+# DM이 없으면 실제 사용자 결정이나 이미 제공된 문서를 근거로 구분
+python3 .harness/flow.py question answer Q2 --file inputs/decisions/Q2.txt --source user-decision
+python3 .harness/flow.py question answer Q3 --file inputs/rule.txt --source provided-document
 ```
 
-답을 받았어도 아직 answered일 뿐이다. 원문과 AI 해석을 분리하고 요구사항·모델·구현·검사를 실제로 반영한다.
+각 명령은 해당 Q가 실제 존재하고 근거를 확보했을 때만 쓴다. AI가 만든 기본값은 사람의 답변으로 기록하지 않는다. 답을 받았어도 아직 answered일 뿐이다. 원문과 AI 해석을 분리하고 요구사항·모델·구현·검사를 실제로 반영한다.
 
 ```bash
 python3 .harness/flow.py question resolve Q1 --interpretation '실제 답변의 뜻과 적용 범위' --changed --updates .harness/work/intake.json .harness/work/task.json .harness/work/model-spec.md --checks allocation
@@ -92,7 +107,7 @@ python3 .harness/runner.py audit
 python3 .harness/flow.py event verified --note '현재 소스의 필수 검사·산출물 확인'
 ```
 
-audit는 테스트뿐 아니라 미해결 HR, 일시중지, 오래된 intake/contract, 미완료 세션을 확인한다. 소스·요구·모델·계약·질답 의미가 바뀌면 이전 증거는 stale이다. 상태판 갱신만으로는 증거가 만료되지 않는다. 검증 중 애매함이 나오면 다시 HR 절차를 따른다.
+audit는 테스트뿐 아니라 미해결 결정, 일시중지, 오래된 intake/contract, 미완료 세션을 확인한다. 소스·요구·모델·계약·질답 의미가 바뀌면 이전 증거는 stale이다. 상태판 갱신이나 DM 유무 변경만으로는 증거가 만료되지 않는다. 검증 중 애매함이 나오면 현재 DM 설정에 맞춰 질문·결정 절차를 따른다.
 
 종료 30분 전에는 새 기능을 줄이고 실제 제출 파일, 실행 명령, 알려진 한계를 정리한다. `runner.py report`는 검증 보기, `runner.py close`는 로컬 작업 종료일 뿐 공식 제출이나 전체 AI 종료가 아니다. 실제 제출은 사용자가 한다. no-AI 평가가 시작되면 도움을 중단한다.
 

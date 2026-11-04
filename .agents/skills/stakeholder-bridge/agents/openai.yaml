@@ -1,4 +1,4 @@
 interface:
-  display_name: "수동 질의와 요구사항 연결"
-  short_description: "별도 DM 질문과 전달된 답변을 요구사항·모델·검증에 연결합니다"
-  default_prompt: "$stakeholder-bridge로 내가 직접 물을 질문을 정리하고 전달한 답변을 반영해 줘."
+  display_name: "질문과 결정 연결"
+  short_description: "담당자 질답 유무에 맞춰 문서와 사용자 결정을 작업에 반영합니다"
+  default_prompt: "$stakeholder-bridge로 모호한 조건을 정리하고 확인한 근거를 작업에 반영해 줘."

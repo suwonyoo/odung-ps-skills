@@ -3,7 +3,7 @@ name: task-finish
 description: Audit local deliverables and align documentation with actual behavior at the end of a structured task workflow. Prepare a concise handoff and requested delivery paths. No competition context is required. Respect an actual no-AI assessment restriction.
 ---
 
-Read the task's exact submission requirements, existing project guidance, and `.harness/GUIDE.md` when present. If `.harness/work/state.json` says closed or the user has started a no-AI phase, do not continue this workflow.
+Read the task's exact submission requirements, existing project guidance, and `.harness/WORKFLOW_KO.md` when present. If `.harness/work/state.json` says closed or the user has started a no-AI phase, do not continue this workflow.
 
 1. Stop feature expansion. Integrate any branch or worktree changes into the designated submission directory. Preserve existing task files and resolve editor/disk conflicts before continuing.
 2. Match every required filename and path against the actual task. Generic internal notes are not a substitute for a requested deliverable. Do not infer hidden-file inclusion from the preview.

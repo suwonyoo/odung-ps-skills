@@ -115,6 +115,16 @@ class Workflow(unittest.TestCase):
                    lambda:w.timed_run(self.root,self.args("raise SystemExit(99)"))]:
             with self.assertRaises(h.KitError):fn()
 
+    def test_closed_status_keeps_actual_duration_when_viewed_later(self):
+        started = w.datetime.fromisoformat(w.read_state(self.root)['started_at'])
+        with mock.patch.object(h, 'now', return_value=w.stamp(started + timedelta(minutes=5))):
+            h.close(self.root)
+        with mock.patch.object(w, 'utc', return_value=started + timedelta(days=1)):
+            board = w.render(self.root)
+        self.assertIn('전체 경과: 5.0분 / 종료 시 남은 예산: 175.0분', board)
+        self.assertIn('진행: 종료', board)
+        self.assertIn('시간 정책: 종료 시각 기준 기록', board)
+
     def test_tampered_timing_log_is_not_a_valid_sample(self):
         w.timed_run(self.root,self.args("print('sample')"))
         run=h.load_json(next(w.path(self.root,"runs").glob("*.json")))

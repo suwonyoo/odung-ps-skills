@@ -116,7 +116,7 @@ def intake_check(root, state):
     for unknown in unknowns:
         text_fields(unknown, ('question_id', 'impact', 'assumption'), 'unknown')
         if unknown['question_id'] not in questions:
-            raise h.KitError('Unknown must reference a recorded HR question')
+            raise h.KitError('Unknown must reference a recorded question')
     return {'intake_sha256': h.digest_file(workfile(root, 'intake.json')),
             'task_sha256': h.digest_file(workfile(root, 'task.json')), 'sources': hashes}
 
@@ -150,7 +150,7 @@ def readiness_errors(root):
     errors = []
     if state.get('schema_version') != 2:
         return ['Unsupported workflow schema; use a fresh v3 task workspace']
-    errors += ['Pending HR: ' + q['id'] for q in blockers(state)]
+    errors += ['Pending decision: ' + q['id'] for q in blockers(state)]
     if state.get('paused'):
         errors.append('Workflow paused; use resume after reconciling answers')
     for check in (current_intake, current_contract):
