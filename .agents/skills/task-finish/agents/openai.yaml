@@ -1,0 +1,4 @@
+interface:
+  display_name: "산출물 정리와 인계"
+  short_description: "실제 동작과 문서를 맞추고 누락된 산출물과 한계를 점검합니다"
+  default_prompt: "$task-finish로 제공 자료와 원하는 결과에 맞춰 현재 작업을 진행해 줘."

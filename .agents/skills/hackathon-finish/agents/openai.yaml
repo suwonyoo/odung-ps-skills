@@ -1,4 +1,0 @@
-interface:
-  display_name: "Hackathon Finish"
-  short_description: "Check deliverables and explain verified behavior"
-  default_prompt: "Use $hackathon-finish to audit the local deliverables before submission."

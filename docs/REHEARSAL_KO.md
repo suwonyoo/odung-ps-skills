@@ -2,10 +2,10 @@
 
 ## 사용자가 할 일
 
-시험 전에 공개 준비 저장소를 복제하고 별도 연습 폴더에 설치한다. 시험 환경에 파일을 들여오는 방법과 허용 범위는 실제 안내를 따른다. 설치는 의존 패키지를 다운로드하지 않는다.
+공개 준비 저장소를 복제하고 별도 작업 폴더에 설치한다. 특정 행사 이름을 말하거나 단계마다 스킬을 호출할 필요는 없다. 평가 환경에 파일을 들여오는 방법과 허용 범위는 실제 안내를 따른다. 설치는 의존 패키지를 다운로드하지 않는다.
 
 ```bash
-git clone --branch v3.0.0 https://github.com/suwonyoo/odung-ps-skills.git
+git clone --branch v3.1.0 https://github.com/suwonyoo/odung-ps-skills.git
 mkdir task-workspace
 python3 odung-ps-skills/scripts/install.py --target "$PWD/task-workspace" --apply
 cd task-workspace
@@ -13,9 +13,11 @@ cd task-workspace
 
 문제 자료를 실제 제공 위치에 두고 Codex에 말한다:
 
-> 문제 파일은 inputs/brief.pdf와 data/야. 원하는 결과와 제출 방식은 안내문에 있어. 구현 시간은 180분이고 AI 사용이 허용된 단계야. HR은 내가 직접 질문하고 답변을 붙여 줄게. 시작하자.
+> 문제 파일은 inputs/brief.pdf, 데이터는 data/야. 원하는 결과는 배정표 생성·저장과 조회 화면이고 상세 조건은 안내문에 있어. 작업 시간은 180분이야. 담당자에게는 내가 직접 질문하고 답변을 붙여 줄게. 시작하자.
 
-자동 선택이 안 되면 한 번만 `.agents/skills/hackathon-start/SKILL.md를 읽고 시작해 줘`라고 덧붙인다. 기존 AGENTS.md는 설치기가 바꾸지 않는다. 레포를 연결하는 행위 자체가 코드를 실행하지는 않는다.
+자동 선택이 안 되면 한 번만 `.agents/skills/task-start/SKILL.md를 읽고 시작해 줘`라고 덧붙인다. 기존 AGENTS.md는 설치기가 바꾸지 않는다. 레포를 연결하는 행위 자체가 코드를 실행하지는 않는다.
+
+v3.1의 일반 작업 진입점은 `task-start`이며 단계 지침은 `task-intake/build/verify/finish`다. 이전 이름을 쓰던 진행 중 폴더는 그대로 마무리하고 다음 과제부터 새 폴더에 설치한다. 시간을 생략하면 180분을 임시 예산으로 표시한다. 일반 개발에 AI 허용 선언을 요구하지 않으며, 평가에 해당할 때만 실제 AI 사용 규칙을 확인한다.
 
 사용자는 파일·시간·실제 규정을 알려 주고, 중요한 선택에 답하고, HR 질문을 전달하고, 필요한 UI 확인과 공식 제출을 한다. task/intake JSON, 단계 이벤트와 문서 갱신은 에이전트가 담당하도록 지침을 넣었다.
 

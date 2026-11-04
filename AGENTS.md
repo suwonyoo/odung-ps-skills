@@ -1,10 +1,12 @@
 # Project instructions
 
-This repository is a preparation toolkit, not a contest solution.
+This repository is a reusable toolkit for structured implementation from problem files and desired outcomes.
 
 ## Starting a task from this checkout
 
-If the user provides a new problem and says to start (rather than asking to develop this toolkit), use `.agents/skills/hackathon-start/SKILL.md`. Locate the actual task directory from the user's supplied paths. Install additively with `python3 scripts/install.py --target ABSOLUTE_TASK_DIRECTORY --apply` when permitted, then work there. If only this kit exists, create a separate sibling `task-workspace` and tell the user where it is; do not copy confidential task content into this public checkout. Do not start the task clock while merely preparing the toolkit. Never infer that connecting a repository executes code: the agent must read these instructions and invoke the workflow.
+If the user supplies a brief/problem, desired outputs and says to start or continue (for example, “문제 파일은 inputs/에 있고 결과는 배정표야. 시작하자”), use `.agents/skills/task-start/SKILL.md`. Do not require a competition name, an AI-permission declaration for ordinary development, or an explicit skill invocation. Do not trigger this workflow for an unrelated small edit or toolkit maintenance.
+
+Locate the actual task directory from the user's supplied paths. Install additively with `python3 scripts/install.py --target ABSOLUTE_TASK_DIRECTORY --apply` when permitted, then work there. If only this kit exists, create a separate sibling `task-workspace` and tell the user where it is; do not copy confidential task content into this public checkout. Do not start the task clock while merely preparing the toolkit. Never infer that connecting a repository executes code: the agent must read these instructions and invoke the workflow.
 
 ## Developing this toolkit
 

@@ -1,6 +1,6 @@
 ---
-name: hackathon-finish
-description: Audit local deliverables, align documentation with actual behavior, and prepare a concise handoff before manual submission. Use only during preparation or the AI-permitted work phase; never generate or assist no-AI follow-up answers.
+name: task-finish
+description: Audit local deliverables and align documentation with actual behavior at the end of a structured task workflow. Prepare a concise handoff and requested delivery paths. No competition context is required. Respect an actual no-AI assessment restriction.
 ---
 
 Read the task's exact submission requirements, existing project guidance, and `.harness/GUIDE.md` when present. If `.harness/work/state.json` says closed or the user has started a no-AI phase, do not continue this workflow.

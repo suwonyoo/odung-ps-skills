@@ -1,6 +1,6 @@
 ---
-name: hackathon-intake
-description: Analyze a timed task's supplied files and data before coding, including combined optimization and service problems, shared constraints, unknown business rules, exact outputs and independent acceptance checks. Use for hackathon preparation or AI-permitted implementation, especially a new brief or material change; not a no-AI follow-up.
+name: task-intake
+description: Analyze supplied problem files and data before structured implementation, especially a new brief or material rule change in this task workflow. Identify combined subproblems, shared constraints, unknown business rules, exact outputs and independent acceptance checks. No competition context is required. Respect an actual no-AI assessment restriction.
 ---
 
 Read actual task instructions, relevant files and the supplied project before proposing a solution. Preserve exact delivery paths, stack and evaluation constraints. Read `references/intake-framework.md`; it defines the compact analysis and intake.json fields. If installed, read `.harness/START_HERE_KO.md` for the strict task.json schema.

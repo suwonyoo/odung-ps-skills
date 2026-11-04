@@ -215,7 +215,7 @@ class Installation(unittest.TestCase):
         self.assertEqual(len(list((self.target / ".agents/skills").glob("*/SKILL.md"))), 7)
 
     def test_conflict_is_preflighted_without_partial_installation(self):
-        path = self.target / ".agents/skills/hackathon-finish/SKILL.md"
+        path = self.target / ".agents/skills/task-finish/SKILL.md"
         path.parent.mkdir(parents=True)
         path.write_text("custom skill")
         with self.assertRaises(h.KitError): installer.install(self.target, True)

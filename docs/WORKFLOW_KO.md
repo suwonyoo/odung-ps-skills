@@ -1,8 +1,8 @@
 # 시작부터 재개까지
 
-대상 과제 폴더의 Codex에 “문제는 inputs/brief.pdf와 data/이고, 원하는 결과는 안내문의 필수 기능이야. 180분, HR은 내가 질문할게. 시작하자.”라고 말한다. 새 폴더에 설치하면 AGENTS.md 진입점이 생긴다. 기존 AGENTS.md가 있으면 보존하므로 최초 한 번 `.agents/skills/hackathon-start/SKILL.md를 읽고 시작해 줘`를 덧붙인다.
+대상 과제 폴더의 Codex에 “문제는 inputs/brief.pdf와 data/이고, 원하는 결과는 안내문의 필수 기능이야. 180분, HR은 내가 질문할게. 시작하자.”라고 말한다. 새 폴더에 설치하면 AGENTS.md 진입점이 생긴다. 기존 AGENTS.md가 있으면 보존하므로 최초 한 번 `.agents/skills/task-start/SKILL.md를 읽고 시작해 줘`를 덧붙인다.
 
-레포 연결만으로 프로그램이 실행되는 것은 아니다. 지침을 읽은 에이전트가 분석·구현하고, CLI는 단계·질문·시간·근거를 기록하고 전환 조건을 검사한다. 사용자는 매 단계마다 스킬 이름을 입력하지 않아도 된다. 실제 CLI의 자동 발견 여부는 시험 전 확인한다.
+특정 행사 이름은 필요 없다. 일반 개발에는 AI 허용 선언을 요구하지 않으며 평가 과제일 때 실제 규정을 확인한다. 레포 연결만으로 프로그램이 실행되는 것은 아니다. 지침을 읽은 에이전트가 분석·구현하고, CLI는 단계·질문·시간·근거를 기록하고 전환 조건을 검사한다. 사용자는 매 단계마다 스킬 이름을 입력하지 않아도 된다. 실제 CLI의 자동 발견 여부는 사용할 환경에서 확인한다.
 
 ## 1. 첫 분석
 
@@ -13,7 +13,7 @@ python3 .harness/flow.py status --watch
 
 start는 재실행해도 기존 시계와 기록을 보존한다. 상태판은 5초마다 갱신하며 Ctrl+C는 관찰만 끝낸다. 실제 제한시간이 210분이면 처음에 210을 사용한다. 준비 레포 개발 시간과 실제 과제 시작 시간을 섞지 않는다.
 
-에이전트가 자료를 읽고 task.json과 intake.json을 채운다. 구체적 형식은 `.agents/skills/hackathon-intake/references/intake-framework.md`와 `.harness/START_HERE_KO.md`. 특히 복합 문제의 각 의사결정, 실행 의존, 공유 자원, 분해로 잃는 보장, 데이터 join/단위/결측 정책을 확인한다. 명세의 모호함은 아래 질답으로 넘긴다.
+에이전트가 자료를 읽고 task.json과 intake.json을 채운다. 구체적 형식은 `.agents/skills/task-intake/references/intake-framework.md`와 `.harness/START_HERE_KO.md`. 특히 복합 문제의 각 의사결정, 실행 의존, 공유 자원, 분해로 잃는 보장, 데이터 join/단위/결측 정책을 확인한다. 명세의 모호함은 아래 질답으로 넘긴다.
 
 ```bash
 python3 .harness/flow.py event inputs-reviewed --note '실제 자료·규칙·검사·복합 문제 관계를 검토함'

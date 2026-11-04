@@ -46,12 +46,12 @@ def install(target, apply=False):
     plan, conflicts = [], []
     for relative, source in files.items():
         # Preserve supplied instructions. The user can explicitly point Codex at
-        # hackathon-start in existing projects; never silently rewrite rules.
+        # task-start in existing projects; never silently rewrite rules.
         if relative == 'AGENTS.md' and (target / relative).exists():
             safe_path(target, relative)
             if not (target / relative).is_file():
                 raise KitError('AGENTS.md must be a regular file')
-            print('KEEP   existing AGENTS.md (read hackathon-start explicitly once if it has no workflow entry)')
+            print('KEEP   existing AGENTS.md (read task-start explicitly once if it has no workflow entry)')
             continue
         if source.is_symlink() or not source.is_file():
             raise KitError(f"Missing or symlink source: {source.name}")
@@ -92,7 +92,7 @@ def install(target, apply=False):
             path.unlink(missing_ok=True)
         raise
     print("Installed. Supplied project files are preserved; a workflow AGENTS.md was added only if absent.")
-    print("Next: ask Codex to read .agents/skills/hackathon-start/SKILL.md and start; or python3 .harness/flow.py start.")
+    print("Next: give Codex your problem files, desired outputs and time budget, then say start. Fallback: read .agents/skills/task-start/SKILL.md.")
     return 0
 
 

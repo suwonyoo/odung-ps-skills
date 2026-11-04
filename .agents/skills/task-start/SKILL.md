@@ -1,9 +1,9 @@
 ---
-name: hackathon-start
-description: Start or resume an AI-permitted hackathon when the user supplies problem files, desired results, and says to start or continue. Coordinate rigorous intake, solver selection, phase display, manual HR questions at any phase, timed work, parallel ownership and evidence-backed notes without requiring separate skill commands. Stop for an active no-AI assessment.
+name: task-start
+description: Start or resume structured implementation when the user provides problem or brief files, desired results and says to start or continue, or asks to resume this installed task workflow. No competition keyword or explicit skill command is required. Coordinate intake, solver choice, manual stakeholder questions, phases, parallel ownership, timing and evidence. Do not activate for an unrelated one-line edit or toolkit maintenance. Respect an actual no-AI assessment restriction.
 ---
 
-Read actual project instructions and supplied files. Preserve their stack, submission paths and permitted models. Use only in preparation or an AI-permitted work phase; stop for an active no-AI assessment.
+Read actual project instructions and supplied files. Preserve their stack, submission paths and permitted models. Ordinary development does not require a competition label or a separate declaration that AI is allowed. If this is an assessment, follow its actual AI rules and stop only for an active no-AI phase. Treat a brief, desired output and “시작하자” as sufficient intent; do not ask the user to repeat a workflow keyword.
 
 1. Locate the task workspace. If inside the public kit, follow its AGENTS.md to install into a separate task directory; never place real task files in the public preparation checkout. If `.harness/flow.py` is absent and the kit is unavailable, state the missing setup and follow the procedure in text without inventing tool execution.
 2. Read `.harness/WORKFLOW_KO.md`. Run `python3 .harness/flow.py start --minutes N` with the actual allowed duration. If unknown, explicitly use a provisional 180-minute budget. Start is idempotent: preserve the original deadline and closed state. Read current STATUS.md, workflow.json and the indicated `.agents/skills/NAME/SKILL.md` instead of restarting.

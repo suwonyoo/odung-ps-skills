@@ -1,4 +1,0 @@
-interface:
-  display_name: "Hackathon Intake"
-  short_description: "Extract task requirements and acceptance checks"
-  default_prompt: "Use $hackathon-intake to read the task and prepare a concrete delivery plan."

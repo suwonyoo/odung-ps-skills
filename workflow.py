@@ -25,16 +25,16 @@ import coordination as c
 
 PHASES = ("intake", "modeling", "parallel-build", "integrate", "verify", "finish")
 ROUTES = {
-    "start": ("intake", "hackathon-intake", "Read supplied files; extract requirements; draft manual stakeholder questions."),
+    "start": ("intake", "task-intake", "Read supplied files; extract requirements; draft manual stakeholder questions."),
     "inputs-reviewed": ("modeling", "solver-modeling", "Compare solvers and write the model specification; run a small real prototype."),
     "hr-answer": (None, "stakeholder-bridge", "Record the user's verbatim answer separately from interpretation; assess affected constraints."),
     "requirements-changed": ("modeling", "solver-modeling", "Revise the model, contract and acceptance checks; revalidate affected results."),
-    "contract-ready": ("parallel-build", "hackathon-build", "Assign disjoint files to core and integration sessions; keep one contract owner."),
-    "candidate-ready": ("integrate", "hackathon-build", "Connect the real solver result to storage and UI; independently validate before publication."),
-    "integrated": ("verify", "hackathon-verify", "Run real data, boundaries, failure paths and state-change checks."),
-    "check-failed": (None, "hackathon-build", "Reproduce; isolate one cause; make a focused fix; rerun the failed and affected checks."),
-    "claim-complete": ("verify", "hackathon-verify", "Read actual evidence; unrun, stale or failed checks are not completion."),
-    "verified": ("finish", "hackathon-finish", "Align requested deliverables with actual behavior and prepare manual submission."),
+    "contract-ready": ("parallel-build", "task-build", "Assign disjoint files to core and integration sessions; keep one contract owner."),
+    "candidate-ready": ("integrate", "task-build", "Connect the real solver result to storage and UI; independently validate before publication."),
+    "integrated": ("verify", "task-verify", "Run real data, boundaries, failure paths and state-change checks."),
+    "check-failed": (None, "task-build", "Reproduce; isolate one cause; make a focused fix; rerun the failed and affected checks."),
+    "claim-complete": ("verify", "task-verify", "Read actual evidence; unrun, stale or failed checks are not completion."),
+    "verified": ("finish", "task-finish", "Align requested deliverables with actual behavior and prepare manual submission."),
 }
 WORKER_STATES = ("running", "waiting", "blocked", "done")
 ENGINES = ("ortools-cp-sat", "ortools-routing", "timefold", "baseline")

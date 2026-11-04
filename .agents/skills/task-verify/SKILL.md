@@ -1,6 +1,6 @@
 ---
-name: hackathon-verify
-description: Validate implemented task behavior with real command output and clearly attributed user observations, preserving failures and unknowns. Use before claiming completion in preparation or an AI-permitted work phase. Do not use for a no-AI follow-up assessment.
+name: task-verify
+description: Validate implemented behavior in an active structured task workflow using real command output and clearly attributed user observations. Preserve failures and unknowns before claiming completion. No competition context is required. Respect an actual no-AI assessment restriction.
 ---
 
 Read the task, project instructions, `.harness/GUIDE.md`, and `.harness/work/task.json` when present. Do not call an absent runner. Respect a closed work phase and stop if the user has entered a no-AI assessment.

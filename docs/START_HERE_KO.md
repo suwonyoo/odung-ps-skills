@@ -7,20 +7,19 @@
 공개 준비 저장소와 실제 과제 작업 폴더를 분리한다. 대상 폴더는 이미 존재해야 한다.
 
 ```bash
-python3 /path/to/codex-hackathon-kit/scripts/install.py --target /path/to/task
-python3 /path/to/codex-hackathon-kit/scripts/install.py --target /path/to/task --apply
+python3 /path/to/odung-ps-skills/scripts/install.py --target /path/to/task
+python3 /path/to/odung-ps-skills/scripts/install.py --target /path/to/task --apply
 cd /path/to/task
 python3 .harness/runner.py doctor
-python3 .harness/flow.py start --minutes 180
 ```
 
 첫 명령은 설치 계획만 출력한다. `--apply`는 새 파일만 만든다. 같은 내용이면 유지하고, 다른 내용이 있으면 전체 설치를 중단한다. 기존 README, AGENTS.md, 소스코드, 패키지, 인증 파일은 수정하지 않는다. 해시 검사는 배포 파일의 변경을 감지하는 기능이며 서명 검증은 아니다.
 
 이후 **대상 과제 폴더에서** Codex를 실행한다. 제공 환경에서는 `/status`, `/model`, 스킬 목록을 확인한다. 다음 요청으로 시작한다.
 
-> .agents/skills/hackathon-start/SKILL.md를 읽고 실제 과제 안내부터 진행해 줘. 중요한 선택은 장단점과 검증 방법으로 묻고 답변과 실제 근거를 남겨 줘. 담당자 DM은 내가 직접 보낼게. 현재 단계·세션·시간도 계속 관리해 줘.
+> 문제 파일은 inputs/brief.pdf와 data/에 있어. 원하는 결과는 안내문의 필수 기능이야. 작업 시간은 180분이고 담당자 DM은 내가 직접 보낼게. 시작하자.
 
-설치 버전에서 스킬이 나타나지 않으면 해당 SKILL.md의 경로를 명시해 읽게 한다. 플랫폼 설정이나 인증을 바꾸지 않는다. 명시적 파일 읽기는 네이티브 스킬 로딩과 다르므로 이를 자동 인식 성공으로 기록하지 않는다.
+기존 AGENTS.md가 다른 절차를 지정하거나 자동 진입이 안 되면 `.agents/skills/task-start/SKILL.md를 읽고 시작해 줘`를 한 번 덧붙인다. 플랫폼 설정이나 인증을 바꾸지 않는다. 명시적 파일 읽기는 네이티브 스킬 로딩과 다르므로 이를 자동 인식 성공으로 기록하지 않는다.
 
 ## task.json의 정확한 형식
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "동작과 근거 검증"
+  short_description: "실제 검사와 사용자 관찰을 구분하여 구현 결과를 확인합니다"
+  default_prompt: "$task-verify로 제공 자료와 원하는 결과에 맞춰 현재 작업을 진행해 줘."

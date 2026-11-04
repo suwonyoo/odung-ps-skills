@@ -1,6 +1,6 @@
 ---
-name: hackathon-build
-description: Implement one bounded feature or fix in a timed coding task using the current project's acceptance conditions. Use during preparation or an explicitly AI-permitted implementation phase; do not use for a no-AI follow-up assessment.
+name: task-build
+description: Implement one bounded feature or fix using an active structured task workflow's acceptance conditions and shared contract. Use after intake and modeling or to fix a verified failure. No competition context is required. Respect an actual no-AI assessment restriction.
 ---
 
 Read the actual task, project instructions, and `.harness/GUIDE.md` when present. Check `.harness/work/state.json` before working; if its phase is closed, do not resume implementation through this workflow. If no harness exists, work within the task's instructions without inventing tool availability.
