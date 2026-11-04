@@ -21,6 +21,7 @@ try:
     import harness as h
 except ModuleNotFoundError:
     import runner as h
+import coordination as c
 
 PHASES = ("intake", "modeling", "parallel-build", "integrate", "verify", "finish")
 ROUTES = {
@@ -37,6 +38,13 @@ ROUTES = {
 }
 WORKER_STATES = ("running", "waiting", "blocked", "done")
 ENGINES = ("ortools-cp-sat", "ortools-routing", "timefold", "baseline")
+ALLOWED = {
+    "inputs-reviewed": set(PHASES), "requirements-changed": set(PHASES),
+    "contract-ready": {"modeling"}, "candidate-ready": {"parallel-build"},
+    "integrated": {"integrate"}, "verified": {"verify", "finish"},
+    "check-failed": {"parallel-build", "integrate", "verify", "finish"},
+    "claim-complete": {"parallel-build", "integrate", "verify", "finish"},
+}
 
 
 def utc():
@@ -53,8 +61,8 @@ def path(root, name):
 
 def read_state(root):
     data = h.load_json(path(root, "workflow.json"))
-    if data.get("schema_version") != 1 or data.get("phase") not in PHASES:
-        raise h.KitError("Unsupported workflow state")
+    if data.get("schema_version") != 2 or data.get("phase") not in PHASES:
+        raise h.KitError("Unsupported workflow state; use a fresh v3 workspace (do not overwrite old evidence)")
     return data
 
 
@@ -70,7 +78,7 @@ def locked(root):
     lock.parent.mkdir(parents=True, exist_ok=True)
     try:
         with lock.open("x", encoding="utf-8") as f:
-            json.dump({"pid": os.getpid(), "created_at": stamp()}, f)
+            json.dump({"pid": os.getpid(), "host": platform.node(), "created_at": stamp()}, f)
     except FileExistsError as exc:
         raise h.KitError("Workflow writer busy. Retry; inspect a persistent lock before removing it.") from exc
     try:
@@ -105,16 +113,23 @@ def render(root):
     remaining = (datetime.fromisoformat(state["deadline"]) - now).total_seconds()
     elapsed = (now - datetime.fromisoformat(state["started_at"])).total_seconds()
     lines = ["# 작업 현황", "", f"갱신: {stamp(now)}", "",
-             f"단계: {'closed' if closed else state['phase']} / 솔버: {state.get('engine') or '미선택'}",
+             f"단계: {'closed' if closed else state['phase']} ({PHASES.index(state['phase'])+1}/{len(PHASES)}) / 솔버: {state.get('engine') or '미선택'}",
+             f"진행: {'HR 답변 / 반영 대기' if state.get('paused') else '진행 가능'} / 모델 변경 번호: {state.get('model_revision',0)}",
              f"전체 경과: {max(0, elapsed)/60:.1f}분 / 설정 마감까지: {remaining/60:.1f}분",
              f"다음 행동: {state['next_action']}", f"읽을 지침: {state['skill']}", "",
              "시간은 설정 예산과 실측값이다. 최적해 도달 ETA나 완료율을 의미하지 않는다.", "",
-             "| 세션 | 상태 | 작업 | 경과 | 갱신 | 다음 / 장애물 |",
+             f"시간 정책: {'설정 마감 경과 · 실행 금지' if remaining <= 0 else '새 기능 중지 · 검증/제출 정리' if remaining <= 1800 else '첫 통합 결과 확인' if remaining <= 5400 else '핵심 기능 우선'}",
+             "", "| 질문 | 상태 | 발견 단계 | 중단 작업 | 영향 |", "|---|---|---|---|---|"]
+    for q in state.get('questions', {}).values():
+        lines.append('| ' + ' | '.join(h.md_cell(x) for x in (q['id'], q['status'], q['phase'], ', '.join(q['blocks']), q['impact'])) + ' |')
+    lines += ["", "| 세션 | 상태 | 작업 | 경과 | 갱신 | 다음 / 장애물 |",
              "|---|---|---|---|---|---|"]
     for file in sorted(path(root, "workers").glob("*.json")):
         w = effective_worker(root, h.load_json(file))
         age = (now - datetime.fromisoformat(w["updated_at"])).total_seconds()
         status = w["status"]
+        if session_blockers(state, w['id']) and status != 'done':
+            status = 'blocked (HR)'
         if status == "running" and age > 120:
             status = "stale (확인 필요)"
         end = datetime.fromisoformat(w.get("finished_at") or stamp(now))
@@ -128,7 +143,7 @@ def render(root):
     for run in sorted(runs, key=lambda x: x["started_at"])[-8:]:
         end = datetime.fromisoformat(run.get("finished_at") or stamp(now))
         duration = run.get("duration_seconds", max(0, (end-datetime.fromisoformat(run["started_at"])).total_seconds()))
-        cells = [run["id"], run["engine"], f"{duration:.2f}s", f"{run['limit_seconds']}s",
+        cells = [run["id"], run["engine"], f"{duration:.2f}s" if duration is not None else 'unknown', f"{run['limit_seconds']}s",
                  run["reason"], run["log"]]
         lines.append("| " + " | ".join(h.md_cell(x) for x in cells) + " |")
     lines += ["", "프로세스 종료 성공은 업무 규칙 검증 성공이 아니다. 실제 증거는 runner.py audit로 확인한다.",
@@ -154,7 +169,7 @@ def start(root, minutes):
             print(render(root))
             return 0
         templates = Path(__file__).resolve().parent / "templates"
-        for name in ("model-spec.md", "architecture.md", "questions.md", "AI_collaboration.md", "limits.md", "contract.json"):
+        for name in ("model-spec.md", "architecture.md", "questions.md", "AI_collaboration.md", "limits.md", "contract.json", "intake.json", "GLOSSARY.md"):
             dest = path(root, name)
             if not dest.exists():
                 content = (templates / name).read_bytes()
@@ -162,10 +177,11 @@ def start(root, minutes):
                     f.write(content)
         now = utc()
         phase, skill, action = ROUTES["start"]
-        h.write_json(path(root, "workflow.json"), {"schema_version": 1, "phase": phase,
+        h.write_json(path(root, "workflow.json"), {"schema_version": 2, "phase": phase,
                      "skill": skill, "next_action": action, "started_at": stamp(now),
                      "deadline": stamp(now + timedelta(minutes=minutes)), "updated_at": stamp(now),
-                     "engine": None, "contract_revision": None}, exclusive=True)
+                     "engine": None, "contract_revision": None, "contract_sha256": None,
+                     "intake_review": None, "model_revision": 0, "questions": {}, "paused": None}, exclusive=True)
         append_event(root, "start", {"budget_minutes": minutes})
         print(render(root))
     return 0
@@ -179,8 +195,7 @@ def contract_check(root):
         raise h.KitError("Contract needs requirement_ids")
     task = h.validate_task(root)
     ids = {r["id"] for r in task["requirements"]}
-    if any(r not in ids for r in contract["requirement_ids"]):
-        raise h.KitError("Contract references unknown requirements")
+    c.refs(contract['requirement_ids'], ids, 'contract requirements')
     return contract["revision"]
 
 
@@ -189,15 +204,33 @@ def event(root, name, note):
     h.nonempty_string(note, "event note")
     with locked(root):
         state = read_state(root)
+        if name not in ALLOWED or state['phase'] not in ALLOWED[name]:
+            raise h.KitError('Invalid phase transition; use start, question or resume as documented')
+        if state.get('paused') or c.blockers(state):
+            raise h.KitError('HR-dependent progression paused; reconcile questions and resume. Independent tasks may continue.')
+        if name == 'inputs-reviewed':
+            state['intake_review'] = c.intake_check(root, state)
+            state['contract_revision'] = None
+            state['contract_sha256'] = None
         if name == "contract-ready":
+            c.current_intake(root, state)
             if not state.get("engine"):
                 raise h.KitError("Select the engine (or baseline) with a reason first")
             state["contract_revision"] = contract_check(root)
+            state['contract_sha256'] = c.contract_signature(root)
+        if name in ('candidate-ready', 'integrated', 'claim-complete', 'verified'):
+            c.current_intake(root, state)
+            c.current_contract(root, state)
         if name == "verified" and not h.audit_result(root)["local_checks_satisfied"]:
             raise h.KitError("Current configured checks are not satisfied; inspect runner.py audit")
         if name == "requirements-changed":
             state["contract_revision"] = None
+            state['contract_sha256'] = None
+            state['intake_review'] = None
+            state['model_revision'] += 1
         phase, skill, action = ROUTES[name]
+        if name == 'check-failed' and state['phase'] == 'finish':
+            phase = 'verify'
         state.update(phase=phase or state["phase"], skill=skill, next_action=action, updated_at=stamp())
         h.write_json(path(root, "workflow.json"), state)
         append_event(root, name, {"note": note, "phase": state["phase"]})
@@ -211,9 +244,12 @@ def select(root, engine, reason, alternative, evidence):
         h.nonempty_string(value, "selection rationale")
     with locked(root):
         state = read_state(root)
+        if state['phase'] != 'modeling' or state.get('paused'):
+            raise h.KitError('Select an engine after intake review, in unpaused modeling')
+        c.current_intake(root, state)
         state.update(engine=engine, phase="modeling", skill="solver-modeling",
                      next_action="Complete the chosen model specification and a timed prototype; freeze the contract.",
-                     updated_at=stamp(), contract_revision=None)
+                     updated_at=stamp(), contract_revision=None, contract_sha256=None)
         h.write_json(path(root, "workflow.json"), state)
         append_event(root, "solver-selected", {"engine": engine, "reason": reason, "alternative": alternative, "evidence": evidence})
         with path(root, "decisions.md").open("a", encoding="utf-8") as f:
@@ -230,7 +266,11 @@ def worker(root, worker_id, status, task, files, next_action, *, run_id=None):
         h.safe_path(root, item)
     h.nonempty_string(task, "task")
     with locked(root):
-        read_state(root)
+        state = read_state(root)
+        if status == 'running':
+            ensure_time(state)
+            if session_blockers(state, worker_id):
+                raise h.KitError('Session blocked by HR: ' + ', '.join(session_blockers(state, worker_id)))
         target = path(root, f"workers/{worker_id}.json")
         old = effective_worker(root, h.load_json(target)) if target.exists() else {}
         if old.get("run_id") and old.get("status") == "running" and old["run_id"] != run_id:
@@ -248,12 +288,183 @@ def worker(root, worker_id, status, task, files, next_action, *, run_id=None):
         now = stamp()
         data = {"id": worker_id, "status": status, "task": task, "files": files,
                 "started_at": old.get("started_at", now) if old.get("status") != "done" and old.get("task") == task and old.get("run_id") == run_id else now,
-                "updated_at": now, "next_action": next_action, "run_id": run_id}
+                "updated_at": now, "next_action": next_action, "run_id": run_id,
+                "contract_revision": state.get('contract_revision')}
         if status == "done":
             data["finished_at"] = now
         h.write_json(target, data)
         render(root)
     return data
+
+
+def ensure_time(state):
+    if utc() >= datetime.fromisoformat(state['deadline']):
+        raise h.KitError('Configured work deadline passed. Do not run more work; check actual phase/rules with the user.')
+
+
+def session_blockers(state, session):
+    return [q['id'] for q in c.blockers(state) if '*' in q['blocks'] or session in q['blocks']]
+
+
+def render_questions(root, state):
+    lines = ['# 수동 HR 질답', '', '자동 생성된 보기. 원본 상태는 workflow.json, 사용자 답변은 원문 그대로 보존한다.', '']
+    for q in state['questions'].values():
+        lines += [f"## {q['id']} · {q['status']}", '', q['text'], '',
+                  f"- 발견 단계: {q['phase']}", f"- 영향: {q['impact']}",
+                  f"- 멈추는 작업: {', '.join(q['blocks']) or '없음'}",
+                  f"- 미응답 가정 / 제한: {q['assumption']}", f"- 선행 질문: {', '.join(q['requires']) or '없음'}"]
+        for answer in q.get('answers', []):
+            lines += ['', f"### 사용자 전달 원문 · 기록시각 {answer['recorded_at']}", '',
+                      '출처: user-copied-hr (HR에게서 직접 취득하거나 인증한 기록이 아님)', '',
+                      *['> ' + line for line in answer['text'].splitlines()]]
+        if q.get('interpretation'):
+            lines += ['', '### AI 해석 / 반영', '', q['interpretation'],
+                      f"- 확인할 검사: {', '.join(q['checks'])}",
+                      '- 반영 파일: ' + ', '.join(q['updates'])]
+        for conflict in q.get('conflicts', []):
+            lines += ['', '### 충돌 기록', '', conflict['note']]
+        lines.append('')
+    path(root, 'questions.md').write_text('\n'.join(lines), encoding='utf-8')
+
+
+def question(root, args):
+    h.require_working(root)
+    if not h.ID_RE.fullmatch(args.id):
+        raise h.KitError('Invalid question ID')
+    with locked(root):
+        state = read_state(root)
+        questions = state['questions']
+        if args.action == 'ask':
+            if args.id in questions:
+                raise h.KitError('Question ID already exists; preserve it and use a new follow-up ID')
+            for value in (args.text, args.impact, args.assumption):
+                h.nonempty_string(value, 'question detail')
+            if any(x not in questions or questions[x]['status'] != 'resolved' for x in args.requires):
+                raise h.KitError('Ask the ready frontier only: prerequisite questions must be resolved')
+            blocking = not args.nonblocking
+            blocks = args.blocks or (['*'] if blocking else [])
+            if any(x != '*' and not h.ID_RE.fullmatch(x) for x in blocks):
+                raise h.KitError('blocks must be session IDs or *')
+            if not blocking and blocks:
+                raise h.KitError('A nonblocking question cannot block sessions')
+            q = {'id': args.id, 'text': args.text, 'impact': args.impact, 'assumption': args.assumption,
+                 'blocking': blocking, 'blocks': blocks, 'requires': args.requires,
+                 'status': 'pending', 'phase': state['phase'], 'created_at': stamp(), 'answers': []}
+            questions[args.id] = q
+            if blocking and not state.get('paused'):
+                state['paused'] = {'phase': state['phase'], 'skill': state['skill'], 'at': stamp()}
+        else:
+            if args.id not in questions:
+                raise h.KitError('Unknown question ID')
+            q = questions[args.id]
+            if args.action == 'answer':
+                if q['status'] not in ('pending', 'conflict'):
+                    raise h.KitError('Answer already recorded; mark conflict or create a follow-up')
+                answerfile = h.safe_path(root, args.file)
+                text = answerfile.read_text(encoding='utf-8')
+                h.nonempty_string(text, 'answer')
+                q['answers'].append({'text': text, 'path': args.file, 'sha256': h.digest_file(answerfile),
+                                     'actor': 'user-copied-hr', 'recorded_at': stamp()})
+                q['status'] = 'answered'
+            elif args.action == 'conflict':
+                h.nonempty_string(args.note, 'conflict note')
+                q.setdefault('conflicts', []).append({'at': stamp(), 'note': args.note})
+                q['status'] = 'conflict'
+                if q['blocking'] and not state.get('paused'):
+                    state['paused'] = {'phase': state['phase'], 'skill': state['skill'], 'at': stamp()}
+            elif args.action == 'resolve':
+                if q['status'] != 'answered':
+                    raise h.KitError('A real copied answer is required before resolution')
+                h.nonempty_string(args.interpretation, 'interpretation')
+                task = h.validate_task(root)
+                c.refs(args.checks, {x['id'] for x in task['checks']+task['manual_checks']}, 'resolution checks')
+                if not args.updates:
+                    raise h.KitError('Record at least one actual reviewed/updated local file')
+                updates = {p: h.digest_file(h.safe_path(root, p)) for p in args.updates}
+                q.update(status='resolved', interpretation=args.interpretation, updates=updates,
+                         checks=args.checks, material_change=args.changed, resolved_at=stamp())
+                if args.changed:
+                    state.update(phase='modeling', intake_review=None, contract_revision=None, contract_sha256=None,
+                                 model_revision=state['model_revision']+1)
+                    if state.get('paused'):
+                        state['paused']['return_to_modeling'] = True
+        if state.get('paused'):
+            state.update(skill='stakeholder-bridge', next_action='질문 원문 전달 → 사용자 답변 복사 → 해석/명세/검사 반영 → resume. 독립 작업만 계속.')
+        state['updated_at'] = stamp()
+        h.write_json(path(root, 'workflow.json'), state)
+        append_event(root, 'question-' + args.action, {'id': args.id, 'status': q['status']})
+        render_questions(root, state)
+        print(render(root))
+    return 0
+
+
+def resume(root, note):
+    h.require_working(root)
+    h.nonempty_string(note, 'resume note')
+    with locked(root):
+        state = read_state(root)
+        if c.blockers(state):
+            raise h.KitError('Unresolved blocking questions: ' + ', '.join(q['id'] for q in c.blockers(state)))
+        paused = state.get('paused')
+        if paused:
+            phase = 'modeling' if paused.get('return_to_modeling') else paused['phase']
+            skill = 'solver-modeling' if paused.get('return_to_modeling') else paused['skill']
+            state.update(phase=phase, skill=skill, paused=None, updated_at=stamp(),
+                         next_action='Re-review intake/contract if changed; rerun affected checks, then continue from the recorded phase.')
+            h.write_json(path(root, 'workflow.json'), state)
+            append_event(root, 'resumed', {'note': note, 'phase': phase})
+        print(render(root))
+    return 0
+
+
+def recover_lock(root):
+    """Recover only an observed dead local PID. Never assume age implies death."""
+    h.require_working(root)
+    lock = path(root, 'workflow.lock')
+    data = h.load_json(lock)
+    if data.get('host') != platform.node() or type(data.get('pid')) is not int or data['pid'] <= 0:
+        raise h.KitError('Lock owner is unknown/different host; inspect manually')
+    try:
+        os.kill(data['pid'], 0)
+    except ProcessLookupError:
+        if h.load_json(lock) != data:
+            raise h.KitError('Lock changed while inspecting; retry')
+        lock.unlink()
+        append_event(root, 'dead-lock-recovered', data)
+        return 0
+    except PermissionError as exc:
+        raise h.KitError('Lock process existence is uncertain') from exc
+    raise h.KitError('Lock owner is still alive; do not remove it')
+
+
+def recover_run(root, run_id, note):
+    h.require_working(root)
+    h.nonempty_string(note, 'recovery note')
+    if not run_id or any(x not in '0123456789Tabcdef-' for x in run_id):
+        raise h.KitError('Invalid run ID')
+    with locked(root):
+        target = path(root, 'runs/' + run_id + '.json')
+        run = h.load_json(target)
+        if run.get('finished_at'):
+            raise h.KitError('Run already completed; inspect the existing evidence')
+        if run.get('host') != platform.node() or not run.get('child_pid'):
+            raise h.KitError('Cannot prove local process ownership; inspect processes manually')
+        for pid in (run['supervisor_pid'], run['child_pid']):
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                continue
+            except PermissionError as exc:
+                raise h.KitError('Process status uncertain') from exc
+            raise h.KitError('Recorded process is still alive; recovery must not kill or replace it')
+        logfile = h.safe_path(root, run['log'])
+        run.update(finished_at=stamp(), reason='abandoned', exit_code=None, process_exit_code=None,
+                   duration_seconds=None, workspace_changed=True, recovery_note=note,
+                   log_sha256=h.digest_file(logfile) if logfile.exists() else None)
+        h.write_json(target, run)
+        append_event(root, 'abandoned-run', {'id': run_id, 'note': note})
+    print('Marked abandoned with unknown exit/time; this is not a successful timing sample.')
+    return 0
 
 
 def extra_snapshot(root, inputs):
@@ -271,7 +482,11 @@ def extra_snapshot(root, inputs):
 
 def timed_run(root, args):
     h.require_working(root)
+    state = read_state(root)
+    ensure_time(state)
     positive(args.limit, "limit")
+    if args.limit > (datetime.fromisoformat(state['deadline']) - utc()).total_seconds():
+        raise h.KitError('Outer run limit exceeds remaining work budget; reduce it')
     if not args.argv:
         raise h.KitError("Provide a command after --")
     argv = args.argv[1:] if args.argv[0] == "--" else args.argv
@@ -286,13 +501,20 @@ def timed_run(root, args):
         "inputs": inputs, "sources": source, "kit_sources": extra_before["kit_sources"],
         "machine": platform.platform(), "cpu_count": os.cpu_count(), "python": sys.version}, sort_keys=True).encode())
     run_id = utc().strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8]
-    worker(root, args.session, "running", args.label, None, "Timed command running", run_id=run_id)
     run = {"id": run_id, "session": args.session, "engine": args.engine, "argv": argv, "cwd": args.cwd,
            "label": args.label, "started_at": stamp(), "limit_seconds": args.limit,
            "fingerprint": fingerprint, "input_sha256": inputs, "sources": source,
-           "reason": "running", "log": f".harness/work/runs/{run_id}.log"}
+           "reason": "running", "log": f".harness/work/runs/{run_id}.log",
+           "host": platform.node(), "supervisor_pid": os.getpid(), "child_pid": None}
     target = path(root, f"runs/{run_id}.json")
     h.write_json(target, run, exclusive=True)
+    try:
+        worker(root, args.session, "running", args.label, None, "Timed command running", run_id=run_id)
+    except BaseException:
+        run.update(reason='not_started', finished_at=stamp(), duration_seconds=0,
+                   exit_code=2, process_exit_code=None, workspace_changed=False, log_sha256=None)
+        h.write_json(target, run)
+        raise
     logfile = h.safe_path(root, run["log"])
     start_time = time.monotonic()
     reason, code, proc = "completed", 127, None
@@ -302,9 +524,15 @@ def timed_run(root, args):
             try:
                 proc = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=output,
                                         stderr=subprocess.STDOUT, start_new_session=os.name == "posix")
+                run['child_pid'] = proc.pid
+                h.write_json(target, run)
                 last_heartbeat = -10.0
                 while proc.poll() is None:
                     elapsed = time.monotonic() - start_time
+                    if session_blockers(read_state(root), args.session):
+                        reason = 'hr_blocked'
+                        h.stop_process(proc)
+                        break
                     if elapsed >= args.limit:
                         reason = "timeout"
                         h.stop_process(proc)
@@ -323,7 +551,11 @@ def timed_run(root, args):
                     time.sleep(0.05)
                 code = proc.wait()
             except OSError as exc:
-                reason = "launch_error"
+                if proc is None:
+                    reason, code = 'launch_error', 127
+                else:
+                    h.stop_process(proc)
+                    reason, code = 'supervisor_error', proc.returncode
                 output.write((str(exc) + "\n").encode())
     except BaseException:
         reason = "interrupted"
@@ -336,7 +568,8 @@ def timed_run(root, args):
             with logfile.open("r+b") as f:
                 f.truncate(h.MAX_LOG_BYTES)
             reason = "output_limit"
-        reported = {"timeout": 124, "output_limit": 125, "interrupted": 130}.get(reason, code if code >= 0 else 128-code)
+        reported = {"timeout": 124, "output_limit": 125, "supervisor_error":125,
+                    "interrupted": 130, "hr_blocked": 126}.get(reason, code if code >= 0 else 128-code)
         try:
             source_after = h.snapshot(root)
             extra_after = extra_snapshot(root, args.input)
@@ -399,7 +632,7 @@ def main(argv=None):
     p.add_argument("--project", default=".")
     sub = p.add_subparsers(dest="command", required=True)
     s = sub.add_parser("start"); s.add_argument("--minutes", type=float, default=180)
-    e = sub.add_parser("event"); e.add_argument("name", choices=ROUTES); e.add_argument("--note", required=True)
+    e = sub.add_parser("event"); e.add_argument("name", choices=ALLOWED); e.add_argument("--note", required=True)
     c = sub.add_parser("select"); c.add_argument("engine", choices=ENGINES)
     for name in ("reason", "alternative", "evidence"): c.add_argument("--"+name, required=True)
     w = sub.add_parser("worker"); w.add_argument("id"); w.add_argument("--status", choices=WORKER_STATES, required=True)
@@ -409,6 +642,20 @@ def main(argv=None):
     r.add_argument("--input", action="append", default=[]); r.add_argument("argv", nargs=argparse.REMAINDER)
     v = sub.add_parser("status"); v.add_argument("--watch", action="store_true")
     sub.add_parser("history"); sub.add_parser("doctor")
+    sub.add_parser('recover-lock')
+    rr = sub.add_parser('recover-run'); rr.add_argument('id'); rr.add_argument('--note', required=True)
+    rs = sub.add_parser('resume'); rs.add_argument('--note', required=True)
+    q = sub.add_parser('question'); qa = q.add_subparsers(dest='action', required=True)
+    ask = qa.add_parser('ask'); ask.add_argument('id')
+    for name in ('text', 'impact', 'assumption'): ask.add_argument('--'+name, required=True)
+    ask.add_argument('--blocks', nargs='+'); ask.add_argument('--requires', nargs='*', default=[])
+    ask.add_argument('--nonblocking', action='store_true')
+    ans = qa.add_parser('answer'); ans.add_argument('id'); ans.add_argument('--file', required=True)
+    res = qa.add_parser('resolve'); res.add_argument('id'); res.add_argument('--interpretation', required=True)
+    change = res.add_mutually_exclusive_group(required=True)
+    change.add_argument('--changed', action='store_true'); change.add_argument('--unchanged', dest='changed', action='store_false')
+    res.add_argument('--updates', nargs='+', required=True); res.add_argument('--checks', nargs='+', required=True)
+    cf = qa.add_parser('conflict'); cf.add_argument('id'); cf.add_argument('--note', required=True)
     args = p.parse_args(argv)
     try:
         root = Path(args.project).absolute()
@@ -417,6 +664,10 @@ def main(argv=None):
         root = root.resolve()
         if args.command == "doctor": return doctor()
         if args.command == "start": return start(root, args.minutes)
+        if args.command == 'question': return question(root, args)
+        if args.command == 'resume': return resume(root, args.note)
+        if args.command == 'recover-lock': return recover_lock(root)
+        if args.command == 'recover-run': return recover_run(root, args.id, args.note)
         if args.command == "event": return event(root, args.name, args.note)
         if args.command == "select": return select(root, args.engine, args.reason, args.alternative, args.evidence)
         if args.command == "worker":

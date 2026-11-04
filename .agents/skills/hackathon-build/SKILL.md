@@ -16,3 +16,9 @@ Read the actual task, project instructions, and `.harness/GUIDE.md` when present
 Return changed behavior, actual validation result, and next action. Stop expanding scope when verification and submission time are at risk. Do not automate submission or provide answers during a no-AI follow-up phase.
 
 With flow.py installed, register session ownership and update the board at task start/change/end. Wrap expensive commands in a timed run. Maintain model-spec.md, architecture.md, decisions.md and AI_collaboration.md with the actual change, rationale, accepted cost and real evidence as you work. Route an actual candidate to integration, and failures to focused diagnosis. Preserve solver-native status and input version; never publish merely because a process returned zero.
+
+## v3 coordination
+
+Before each slice read status and HR blockers. If joins, units, shared constraints or a user-visible edge case are ambiguous, use stakeholder-bridge immediately. Continue independent tasks with disjoint ownership. Preserve contract revision across sessions; its owner integrates changes. Keep the first slice end-to-end; parallel UI must consume the frozen contract and use real output early.
+
+For a bug, establish a small command that detects the actual failure, isolate a cause, fix it and rerun affected behavior. Avoid a long debugging ceremony for a trivial typo. Mark a session done only after handing off changes and real evidence; process exit 0 leaves a timed worker waiting.

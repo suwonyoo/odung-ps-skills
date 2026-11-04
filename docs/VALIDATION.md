@@ -1,40 +1,68 @@
-# Validation
+# 구현 범위와 검증
 
-Validation is performed on synthetic temporary projects. No contest workspace, real problem, or private input is used.
+v3.0.0, 2026-11-04. 합성 임시 프로젝트로 검증했다. 실제 시험 자료·평가 환경·비공개 첨부는 사용하지 않았다.
 
-Automated checks cover these behaviors:
+## 무엇이 구현되어 있나
 
-- Dry-run installation writes no files; repeated installation is idempotent.
-- Existing project instructions and application files remain intact.
-- Conflicts and symlink paths stop installation before writing.
-- Empty configuration, unknown references, missing coverage, and schema typos fail.
-- Actual success and failure exits are captured, including launch errors and timeouts.
-- Output exceeding the local log limit is recorded as failure.
-- A fixed implementation retains the earlier failed record.
-- Source changes, criteria changes, and changes during a check invalidate prior evidence.
-- A changed log is marked invalid.
-- A missing required file blocks local readiness.
-- Manual checks require explicit user confirmation and remain labeled user-reported.
-- Closing the work phase prevents additional checks and report generation.
+| 항목 | 상태 |
+|---|---|
+| 자연어 시작/재개 | AGENTS.md와 일곱 스킬의 안내 경로 구현. 에이전트가 읽고 실행해야 함 |
+| 첫 분석 | source/규칙/요구/검사 연결, 복합 component·coupling, 실행 순환·커버리지·자료 변경 검사 구현 |
+| 단계 전환 | intake→modeling→build→integrate→verify→finish 전환 조건 검사 구현 |
+| 어느 단계에서든 HR | 질문/답변/충돌/반영/재개 상태, 원문·해시·발견 단계·영향·중단 세션 구현 |
+| 시간과 병렬 현황 | 실제 경과·설정 예산·heartbeat·경로 소유 충돌·stale 상태 구현 |
+| 실행과 복구 | timeout, 출력 제한, 중단, supervisor 오류, 죽은 로컬 PID 확인 후 복구 구현 |
+| 검증 | 실제 종료·로그·해시, 수동 관찰 구분, 자료/모델/계약/질답/제출물 변경에 따른 만료 구현 |
+| OR-Tools / Timefold | 고정 버전의 작은 직원 배정 예제 두 개와 독립 검증기 구현 |
+| 실제 서비스 | 미포함. 과제별 앱·API·데이터베이스·로그인·경로 모델을 구현해야 함 |
+| 원자적 발행·fallback | 실제 서비스에 적용할 설계·검사 지침. 범용 트랜잭션 구현은 아님 |
+| 에이전트 자동 실행 | 외부 모델 호출·CLI 자동 생성·native hooks 없음 |
+| 공식 제출/채점 | 자동 제출·시험 플랫폼·합격률 검증 없음 |
 
-Run the suite with `python3 -m unittest discover -s tests -v`.
+## 재현 가능한 자동 검사
 
-These tests validate the runner's behavior. They do not prove that a task author's assertions cover every requirement. They do not validate a particular managed Codex release, a contest's grader, official submission, or model availability. Native skill discovery in the target environment must be checked there.
+```bash
+python3 -m unittest discover -s tests -v
+```
 
-On 2026-10-30, a separate agent used `hackathon-verify` on a synthetic stock project without being told which defects were present. The original narrow test passed. The agent derived additional checks from the task, found an equal-threshold error and an empty-value error, and produced seven checks with two failures. It left the application unchanged, preserved both the earlier pass and later failure, and reported the optional UI check as unverified. This supports the verification workflow in that scenario; it does not establish a general success rate.
+Python 3.12/Linux에서 **66개 통과**, 해당 최종 실행 약 **3.655초**. 시간은 환경과 실행에 따라 달라진다. 일곱 개인 스킬의 형식 검증도 통과했다.
 
-The v2 runtime suite passed 44 tests on Python 3.12/Linux on 2026-11-04 KST. All seven SKILL.md files passed the skill format validator. Native discovery in a managed Codex CLI and the actual exam platform were not exercised.
+범위: 설치 미리보기/충돌/멱등성/기존 지침 보존, 빈 설정·오타·누락 검사, 실제 성공/비영 종료/없는 실행파일/timeout/출력 제한, 실패 근거 보존, 수동 관찰 출처, 수정된 로그 탐지, source/criteria/model/contract/question/deliverable 변경 후 만료, 미완료 세션과 HR blocker, 복합 의존의 순환, 늦은 HR 질문·상충 답·재개, 전체 예산 초과 거부, 락/실행 복구, 종료 상태.
 
-Additional v2 checks cover contract and evidence gates, overlapping file ownership, ownership preservation across timed commands, stale session display, real nonzero exits, outer timeout, missing programs, busy writers, recovery from a delayed final status update, failed post-run snapshots, differing working directories, modified declared inputs, changed timing logs, and closed workspaces. A process exit of zero cannot advance to verified without current configured acceptance evidence.
+독립 검토자가 추가로 네 결함을 재현했고 같은 재현으로 수정을 확인했다:
 
-Both optional solver examples were actually executed: OR-Tools 9.15.6755 / Python 3.12 and Timefold CE 2.7.1 / Java 21. The Java sources compiled with Maven 3.9.11. Four scenarios per solver passed: feasible zero-preference-penalty assignment, an impossible input, missing day, and fractional day. The independent Python validator accepted the good plans and rejected the impossible plans. The malformed inputs were rejected before solving. Timefold's impossible candidate was not labeled proven infeasible or optimal.
+1. ignored 빌드 폴더의 필수 제출물이 바뀌어도 예전 pass가 유지됨 → 명시된 제출물은 별도 해시로 추적.
+2. 검사 후 snapshot 실패가 원래 exit 7과 JSON 근거를 잃게 함 → 원래 종료와 캡처 실패를 함께 보존.
+3. 실행 기록 생성 실패가 시작하지 않은 세션을 영구 점유함 → 기록을 먼저 준비하고 실패한 점유는 not_started로 기록.
+4. 자식 실행 후 기록 저장 오류가 자식을 남겨 둠 → supervisor_error, 실제 자식 종료 코드, 프로세스 그룹 종료를 별도 처리.
 
-Reproduce the optional checks after preparing the runtimes and compiling Timefold:
+실제 감독 프로세스 SIGKILL 뒤 기록된 두 PID가 사라진 경우의 복구도 확인했다. 결과를 성공으로 꾸미지 않고 exit/time unknown으로 남겼다.
+
+## 실제 솔버 실행
+
+OR-Tools 9.15.6755/Python 3.12, Timefold CE 2.7.1/Java 21.0.13, Maven 3.9.11. 각 솔버에서 feasible, impossible, day 누락, 소수 day의 **총 8개 검사 통과**. Java 예제도 새 환경에서 컴파일했다.
 
 ```bash
 python3 scripts/check_solvers.py --ortools-python /path/to/venv/bin/python --java /path/to/jdk21/bin/java
 ```
 
-An independent code review reproduced five faults in final-state recovery, result preservation, timing grouping, input freshness and Java input coercion. They were fixed, and the same reproductions passed afterward. A separate cold-start skill exercise used a synthetic meeting-room assignment brief: it produced requirements, model and contract drafts, manual stakeholder questions, decision/architecture/AI notes and a status board. It kept missing business priorities and unrun solver prototypes explicitly unresolved and did not send a DM or claim a completed application. This is a single preparation exercise, not a general success-rate estimate.
+독립 Python 검증기는 유효한 배정을 수용하고 불가능 입력의 후보를 거부했다. 잘못된 입력은 solve 전 거부했다. Timefold의 미발견 후보에 infeasibility/optimality 증명을 붙이지 않았다. 실측은 REHEARSAL_KO.md에 있다. 작은 예제 결과로 실제 규모의 성능을 추정하지 않는다.
 
-Limitations: the examples implement only their stated synthetic rules; they are not production services. No universal automatic problem-to-model compiler, native CLI hook installation, solver worker scheduler, real task grader, UI submission, or production transaction system is tested or claimed. A real application must implement its own independent rule checks, version-aware publication and fallback behavior. Timing history is descriptive, not an ETA guarantee. Dependency installation time is environment-dependent; top-level pins are not full transitive lockfiles.
+## 새 세션의 실행 검증
+
+에이전트에게 진단이나 기대 답을 주지 않고 지침과 원자료를 전달했다.
+
+- **복합 과제 시작:** 교육 요청/교육실/방향별 이동시간을 읽어 3개 요청·2개 실·4개 이동값을 관찰했다. 공동 배정·이동 component와 상태 발행/조회의 연결을 정리하고, people/employee 의미, 장소·시각 의미, 장비 요구를 질문했다. Q1–Q3을 pending으로 남기고 핵심 구현을 중단했다. 초기 분석·질문·기록 시점까지 상태판 경과 약 7.9분이었다. 기능 검사 7개는 미실행으로 남겼다. 이는 빠른 전체 구현 기록이 아니다.
+- **검증 중 HR 답변:** 숫자 3의 업무 단위가 모호한 상태에서 질문을 등록하고 verify를 중단했다. 합성 HR 원문을 받은 뒤 명세·계약 v2·CLI/화면·검사를 수정하고 재개했다. 자동 검사 3개 안의 4개 테스트는 통과했으며, 실제 사용자 화면 확인은 미확인으로 남겨 verify를 유지했다. 확인하지 않은 UI를 통과로 기록하지 않았다.
+
+이 두 실행과 자동 테스트는 특정 시나리오의 증거다. 모든 문제의 성공률, 실제 Codex CLI의 implicit discovery, 실제 시험 클라이언트와 채점기를 검증한 것은 아니다.
+
+## 운영 한계
+
+- 분석 스키마는 의미 이해를 판정하지 않는다. 잘못된 업무 가정도 구조가 맞으면 통과할 수 있다.
+- 질문이 blocking인지, 병렬 작업이 독립인지, 수정된 검사가 답변을 충분히 반영하는지는 에이전트/사용자의 판단이다.
+- 직접 runner.py check는 HR/전체 마감을 감시하지 않는다. 자동 중단이 필요하면 flow run으로 감싸고 올바른 세션을 blocks에 넣는다. audit는 blocker가 남으면 완료를 허용하지 않는다.
+- 파일 기록은 보안 샌드박스·불변 감사 증명·전역 AI 차단 장치가 아니다.
+- Windows 자식 종료, 다중 호스트, 죽었는지 확인할 수 없는 PID는 자동 복구를 보장하지 않는다. spawn 직후 기록 전 강제 종료처럼 소유권이 불확실한 경우 수동 확인이 필요하다.
+- 별도 UI 수동 관찰, actual target environment, 공식 제출은 사용자가 실제 환경에서 확인해야 한다.
+- 설치시간은 환경에 따라 달라지며 최상위 버전 pin이 모든 전이 의존성 lock을 뜻하지 않는다. v1/v2 evidence의 자동 마이그레이션은 없다.

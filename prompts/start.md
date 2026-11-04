@@ -1,1 +1,10 @@
-Read .agents/skills/hackathon-start/SKILL.md and begin with the actual task files. Preserve the supplied project. Maintain the current phase, per-session tasks, time budgets and next action through .harness/flow.py. Choose OR-Tools, Timefold or baseline from actual requirements and environment evidence; record a concrete model and input/output contract before parallel implementation. Ask material decisions with a simple explanation of the term, options, costs, recommendation and verification method. Save my actual replies and actual implementation/evidence in the working Markdown files as we go. Route to the next relevant skill yourself; do not wait for me to name each one. I will send the stakeholder DMs and copy answers back. Keep time for integration, independent validation and manual submission.
+문제 파일은 [실제 경로], 데이터는 [실제 경로]야. 원하는 결과와 제출 조건은 안내문을 따라줘. 구현 시간은 [실제 분]분이고 지금은 AI 사용이 허용된 단계야. HR 질답은 내가 직접 보내고 답을 붙여 줄게. 시작하자.
+
+자동 시작이 되지 않을 때 한 번만 추가:
+`.agents/skills/hackathon-start/SKILL.md를 읽고 진행해 줘.`
+
+재개할 때:
+“계속하자. 기존 시계와 상태를 유지하고 현재 단계·막힌 질문부터 확인해 줘.”
+
+답변을 받았을 때:
+“Q1에 대한 HR 답변 원문이야: [원문]. 영향받는 명세와 검사를 반영하고 재개해 줘.”

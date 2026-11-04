@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import harness as h
 import workflow as w
+from fixtures import intake, build_ready, verify_phase
 
 
 class Workflow(unittest.TestCase):
@@ -46,6 +47,8 @@ class Workflow(unittest.TestCase):
 
     def test_contract_gate_needs_engine_real_requirements_and_fields(self):
         with self.assertRaises(h.KitError): w.event(self.root,"contract-ready","draft")
+        intake(self.root)
+        w.event(self.root,"inputs-reviewed","reviewed")
         w.select(self.root,"baseline","Simple problem","Solver unnecessary","observed")
         with self.assertRaises(h.KitError): w.event(self.root,"contract-ready","draft")
         c={"revision":"v1","owner":"core","requirement_ids":["R1"],"input":"JSON","output":"value","failure_behavior":"error"}
@@ -56,6 +59,8 @@ class Workflow(unittest.TestCase):
     def test_verified_requires_current_pass_not_just_process_success(self):
         w.timed_run(self.root,self.args("pass"))
         with self.assertRaises(h.KitError):w.event(self.root,"verified","process exited")
+        verify_phase(self.root)
+        w.worker(self.root,"solver","done","test run",[],"reviewed")
         h.check_command(self.root,[])
         w.event(self.root,"verified","current acceptance evidence")
         self.assertEqual(w.read_state(self.root)["phase"],"finish")

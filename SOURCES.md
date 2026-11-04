@@ -35,3 +35,8 @@ Solver/workflow references checked on 2026-11-04 (KST):
 Examples are original, deliberately small synthetic models. Solver binaries, upstream source archives, task data and actual work logs are not bundled. Installed transitive dependencies retain their own licenses. Pinning the top-level dependency does not lock every transitive dependency; record the resolved environment during rehearsal.
 
 Use the actual event rules and project instructions at runtime. Public documentation does not establish the capabilities or permissions of a particular managed environment.
+
+## v3 critical adaptation (2026-11-04)
+
+- Matt Pocock skills: https://github.com/mattpocock/skills at `4ae2317ddb22b046e26455e4f9c9b3aaaf62212d`, MIT. Read README/LICENSE and grilling, domain-modeling, to-spec, to-tickets, diagnosing-bugs SKILL.md. Original project instructions implement a bounded question frontier, vocabulary/decision capture, vertical slices and focused diagnosis; no upstream skill package or text is bundled. See docs/ADOPTION_REVIEW_KO.md for exclusions and tradeoffs.
+- https://learn.chatgpt.com/docs/build-skills — repository `.agents/skills`, explicit/implicit invocation and progressive disclosure rechecked. Actual managed contest client behavior remains untested; direct-file startup is the fallback.

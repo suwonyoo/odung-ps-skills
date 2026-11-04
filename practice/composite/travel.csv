@@ -1,0 +1,5 @@
+from_site,to_site,minutes
+A,A,0
+B,B,0
+A,B,15
+B,A,25

@@ -1,60 +1,105 @@
-# 흐름과 상태판
+# 시작부터 재개까지
 
-설치 후 Codex에 “제공 자료로 시작해 줘. 전체 진행과 판단 기록을 계속 관리해 줘.”라고 요청한다. `hackathon-start`가 시작·재개를 담당한다. 자동 선택이 없는 CLI에서는 첫 요청에 `.agents/skills/hackathon-start/SKILL.md`를 읽으라고 한 번 덧붙인다.
+대상 과제 폴더의 Codex에 “문제는 inputs/brief.pdf와 data/이고, 원하는 결과는 안내문의 필수 기능이야. 180분, HR은 내가 질문할게. 시작하자.”라고 말한다. 새 폴더에 설치하면 AGENTS.md 진입점이 생긴다. 기존 AGENTS.md가 있으면 보존하므로 최초 한 번 `.agents/skills/hackathon-start/SKILL.md를 읽고 시작해 줘`를 덧붙인다.
 
-이 도구가 Codex 세션을 자동 생성하거나 모델을 호출하지는 않는다. 지침을 읽은 에이전트가 사건에 맞춰 다음 지침을 읽고 CLI를 호출한다. 상태·로그·명령 시간은 코드가 기록한다. 사용자는 매 단계마다 스킬 이름을 입력할 필요가 없다.
+레포 연결만으로 프로그램이 실행되는 것은 아니다. 지침을 읽은 에이전트가 분석·구현하고, CLI는 단계·질문·시간·근거를 기록하고 전환 조건을 검사한다. 사용자는 매 단계마다 스킬 이름을 입력하지 않아도 된다. 실제 CLI의 자동 발견 여부는 시험 전 확인한다.
 
-## 실행
+## 1. 첫 분석
 
 ```bash
 python3 .harness/flow.py start --minutes 180
 python3 .harness/flow.py status --watch
 ```
 
-다른 터미널의 상태판은 5초마다 갱신한다. `Ctrl+C`로 상태판만 종료한다. 수동 세션은 마지막 갱신이 120초를 넘으면 stale로 표시한다. 에이전트의 실제 사고 과정을 감시하지 않으며 갱신되지 않은 세션이 죽었다고 단정하지 않는다.
+start는 재실행해도 기존 시계와 기록을 보존한다. 상태판은 5초마다 갱신하며 Ctrl+C는 관찰만 끝낸다. 실제 제한시간이 210분이면 처음에 210을 사용한다. 준비 레포 개발 시간과 실제 과제 시작 시간을 섞지 않는다.
+
+에이전트가 자료를 읽고 task.json과 intake.json을 채운다. 구체적 형식은 `.agents/skills/hackathon-intake/references/intake-framework.md`와 `.harness/START_HERE_KO.md`. 특히 복합 문제의 각 의사결정, 실행 의존, 공유 자원, 분해로 잃는 보장, 데이터 join/단위/결측 정책을 확인한다. 명세의 모호함은 아래 질답으로 넘긴다.
 
 ```bash
-python3 .harness/flow.py event inputs-reviewed --note '실제 자료와 미확인 조건을 분리함'
-python3 .harness/flow.py select ortools-cp-sat --reason '실제 선택 이유' --alternative 'Timefold의 비용과 이번 환경의 차이' --evidence '실제로 실행한 명령·결과 또는 미확인'
-python3 .harness/flow.py worker core --status running --task '제약 모델' --files src/core --next '작은 반례 검증'
-python3 .harness/flow.py worker integration --status running --task '저장·조회' --files src/api src/ui --next '공유 계약으로 연결'
+python3 .harness/flow.py event inputs-reviewed --note '실제 자료·규칙·검사·복합 문제 관계를 검토함'
+python3 .harness/flow.py select ortools-cp-sat --reason '실제 선택 근거' --alternative '대안 및 전환 비용' --evidence '실행 결과 또는 미확인 범위'
 ```
 
-`contract.json`의 필수 필드와 실제 requirement ID를 채운 후 `event contract-ready`로 넘어간다. 구조 검사 통과가 명세의 의미까지 검증하지는 않는다. 합의된 계약 revision을 각 세션에 전달한다.
+첫 전환은 빈 분석, 없는 자료 파일, 잘못된 요구/검사 연결, 실행 순환을 거부한다. source 파일 해시를 보관하여 변경을 감지한다. 내용이 의미상 옳은지는 사람이 판단해야 한다. 원문에 없는 조건을 채워 통과시키면 안 된다.
 
-## 자연스럽게 남기는 파일
-
-| 사건 | 기록 |
-|---|---|
-| 중요한 선택 | decisions.md: 문제, 용어의 쉬운 뜻, 대안, 선택, 이유, 감수한 비용, 다음 검증 |
-| 사용자의 판단 | 원문 답변과 판단 주체를 함께 기록; 응답 전에는 proposed |
-| 수동 DM 답변 | questions.md: 전달된 원문과 AI 해석을 구분; 요구 ID와 연결 |
-| 모델 구현 | model-spec.md: 변수·규칙·목표·제한·보장 범위 |
-| 모듈·상태 변경 | architecture.md: 실제 경로·책임·상태·실패 동작 |
-| AI 제안과 검증 | AI_collaboration.md: 수용·수정·폐기와 실제 명령·근거 |
-| 확인하지 못한 가정 | limits.md: 영향·반례·다음 검증 |
-
-중요한 질문은 이 순서로 짧게 묻는다: **결정할 것 → 전문 용어와 쉬운 뜻 → 선택지 2개·비용 → 추천 근거 → 결과 확인 방법**. 되돌리기 쉬운 내부 구현은 합리적인 기본값으로 진행하고 기록한다. 목표 우선순위, hard 규칙 완화, 외부 전달·비용 등 사용자 판단이 필요한 사항은 답을 기다린다.
-
-## 시간과 실행
+## 2. 어떤 단계에서도 HR 질문
 
 ```bash
-python3 .harness/flow.py run --session solver --engine ortools-cp-sat --label '작은 배정 모델' --limit 30 --input input.json -- python3 solve.py input.json
+python3 .harness/flow.py question ask Q1 --text '인원이 부족하면 부분 배정을 허용하나요?' --impact '완전 배정 hard 규칙과 실패 응답' --assumption '답변 전 부분 배정 발행 금지' --blocks core solver integration
+```
+
+질문 ID, 발견 단계, 영향과 중단 세션을 보관한다. blocks를 생략하면 모든 세션을 중단 대상으로 본다. 이미 실행 중인 해당 세션의 flow run 명령도 중단되고 hr_blocked가 기록된다. 다른 터미널에서 직접 실행한 명령까지 제어하지는 않는다. 세션 간 의미상 독립은 에이전트가 판단한다.
+
+blocking 질문이 있으면 전체 단계 전환은 잠긴다. `--nonblocking`은 정렬 순서처럼 되돌릴 수 있는 가정을 명시할 때만 쓴다. 필수 제약이나 목표 우선순위를 묻는 질문에 쓰지 않는다. 선행 답이 필요한 질문은 `--requires Q1`으로 연결하되 Q1이 resolved가 되기 전에는 등록할 수 없다.
+
+사용자가 직접 DM을 보내고 원문을 붙여 주면, 에이전트가 그 내용을 과제 폴더에 저장한다. 아래 파일은 **실제로 받은 원문**이어야 한다.
+
+```bash
+python3 .harness/flow.py question answer Q1 --file inputs/hr/Q1.txt
+```
+
+답을 받았어도 아직 answered일 뿐이다. 원문과 AI 해석을 분리하고 요구사항·모델·구현·검사를 실제로 반영한다.
+
+```bash
+python3 .harness/flow.py question resolve Q1 --interpretation '실제 답변의 뜻과 적용 범위' --changed --updates .harness/work/intake.json .harness/work/task.json .harness/work/model-spec.md --checks allocation
+python3 .harness/flow.py resume --note '원문과 조건·검사 변경을 대조함'
+```
+
+- `--changed`: 의미 있는 조건 변경. modeling으로 돌아가며 intake/contract를 다시 검토한다.
+- `--unchanged`: 원래 정의와 같다는 근거가 있을 때. 중단한 단계로 돌아간다.
+- `question conflict Q1 --note '원문 S1과 상충하는 내용'`: 모순을 남기고 확인 질문을 한다. 기존 원문을 지우지 않는다.
+
+모든 blocking 질문이 resolved여야 resume이 된다. resolve는 반영 파일 해시와 검사 ID를 기록할 뿐 올바른 구현이나 검증 통과를 뜻하지 않는다. 답변이 오지 않으면 관련 필수 기능은 미완료로 남는다. questions.md는 생성된 보기이므로 직접 편집하지 않는다.
+
+## 3. 모델·계약·병렬 구현
+
+model-spec.md에 변수/규칙/목표, solver-native 상태, feasible/optimal/proven-infeasible 구분, 실패·fallback·데이터 revision을 적는다. 실제 설치 환경과 작은 실행으로 OR-Tools/Timefold/baseline 중 고른다. 둘 다 구현하지 않는다.
+
+contract.json의 revision, owner, requirement_ids, input, output, failure_behavior를 채운다. 예제가 아니라 실제 서비스 인터페이스여야 한다.
+
+```bash
+python3 .harness/flow.py event contract-ready --note '공유 입출력과 실패 계약 검토'
+python3 .harness/flow.py worker core --status running --task '모델과 독립 검증' --files src/core --next '작은 반례'
+python3 .harness/flow.py worker integration --status running --task '저장과 최소 조회' --files src/api src/ui --next '실제 결과로 연결'
+```
+
+한 사람이 계약·공유 타입·의존성을 소유한다. 최소 입력→핵심 결정→독립 검증→실제 출력 경로를 먼저 연결한다. 폴더 전체를 나중에 덮어쓰지 않는다. worker는 경로 소유 충돌을 거부하지만 파일 쓰기를 막는 샌드박스는 아니다. 수동 세션의 경과는 작업 시작 이후 벽시계 시간이며, 120초 이상 갱신되지 않으면 stale 표시한다.
+
+여러 CLI 세션, 하위 에이전트, 솔버 내부 workers는 별개다. 환경의 허용 모델·동시 실행 제한·CPU 예산을 따른다. 외부 모델 API나 자동 세션 생성은 포함하지 않는다.
+
+## 4. 시간과 실패
+
+```bash
+python3 .harness/flow.py run --session solver --engine ortools-cp-sat --label '작은 모델' --limit 30 --input input.json -- python3 solve.py input.json
 python3 .harness/flow.py history
 ```
 
-명령마다 실제 argv·시작·종료·경과·외부 제한·원래 종료 코드·로그 해시를 저장한다. 2초마다 실행 세션을 갱신한다. 출력은 로그 파일에 있고 상태판에 그 경로가 표시된다. 외부 제한은 솔버 제한보다 여유 있게 둔다. Linux/macOS에서는 제한 도달 시 프로세스 그룹을 종료한다. Windows에서는 자식 프로세스 전체 종료를 보장하지 않으므로 시험 전에 별도 확인한다.
+실제 argv/cwd/종료/로그/경과/입력 해시를 기록하고 2초마다 heartbeat를 갱신한다. 종료 코드를 바꾸어 성공으로 꾸미지 않는다. 30초 외부 제한이면 내부 탐색은 더 짧게 두어 결과 직렬화·검증 시간을 남긴다. 외부 kill은 최종 후보 저장을 보장하지 않는다. 남은 전체 작업 예산보다 긴 run은 거부한다.
 
-솔버 자체는 입력 읽기, 모델 구성, 첫 feasible 해, 마지막 개선, solve, 독립 검증 시간을 가능한 범위에서 결과에 남긴다. 미관측 값은 null이다. 시간 제한은 해를 찾는다는 보장이 아니며, 프로세스의 exit 0은 계획의 유효성 증거가 아니다.
+Linux/macOS는 프로세스 그룹을 종료한다. Windows 자식 종료와 다중 호스트는 별도 검증되지 않았다. history는 동일 fingerprint의 성공·무변경·정상 로그 표본에 한해 최소/중앙/최대를 보여준다. 미래 ETA나 최적해 도달 보장이 아니다. 설치/첫 빌드/모델 구성/solve/독립 검증은 따로 측정한다.
 
-history는 명령·입력·소스·제한·환경 fingerprint가 같은 성공 실행의 실측 최소·중앙·최대를 보여준다. 실패·timeout·입력 변경을 성공 표본에 섞지 않는다. 표본은 미래 ETA나 통계적 신뢰구간이 아니다. 실제 데이터 규모가 바뀌면 다시 측정한다.
+비정상 종료 후 status를 읽는다. `recover-lock`은 같은 호스트의 기록된 PID가 없을 때만 락을 해제한다. `recover-run RUN_ID --note ...`는 감독/자식 PID가 모두 사라진 로컬 실행만 abandoned로 남긴다. 종료 코드·실제 지속시간은 unknown이다. 살아 있거나 확인 불가능한 프로세스는 자동 제거하지 않는다.
 
-## 병렬 작업
+## 5. 검증과 마무리
 
-코어 A와 연결 B로 시작한다. A는 모델과 검증, B는 API·저장·최소 화면을 맡는다. 공유 타입·의존성·계약은 한 명만 수정한다. 폴더를 나중에 덮어쓰지 않고 작은 단위로 통합한다. worker 명령은 겹치는 소유 경로를 거부하지만 파일 쓰기 자체를 막는 샌드박스는 아니다. Git worktree 사용 시 상태판은 지정한 통합 작업 공간 하나에서 관리한다.
+```bash
+python3 .harness/flow.py event candidate-ready --note '첫 실제 후보 경로 완성'
+python3 .harness/flow.py event integrated --note '저장·조회와 실제 결과 연결'
+python3 .harness/runner.py check
+python3 .harness/flow.py worker core --status done --task '모델과 독립 검증' --next '변경과 근거 인계 완료'
+python3 .harness/flow.py worker integration --status done --task '저장과 최소 조회' --next '통합 확인 완료'
+python3 .harness/runner.py audit
+python3 .harness/flow.py event verified --note '현재 소스의 필수 검사·산출물 확인'
+```
 
-여러 Codex 세션과 솔버 내부 병렬성은 별개다. CPU가 4개인데 솔버 2개가 각각 8 workers로 실행되지 않게 예산을 잡는다. Timefold CE에서 사용할 수 있는 병렬 기능은 선택한 버전의 기능 범위를 확인한다.
+audit는 테스트뿐 아니라 미해결 HR, 일시중지, 오래된 intake/contract, 미완료 세션을 확인한다. 소스·요구·모델·계약·질답 의미가 바뀌면 이전 증거는 stale이다. 상태판 갱신만으로는 증거가 만료되지 않는다. 검증 중 애매함이 나오면 다시 HR 절차를 따른다.
 
-`event candidate-ready` → 통합, `event integrated` → 검증, `event claim-complete` → 근거 확인이다. `event verified`는 현재 설정된 필수 검사와 산출물이 충족되지 않으면 거부한다. 공식 제출은 사용자와 실제 안내에 따른다. 작업 종료 후 `runner.py close`는 추가 작업 명령을 막는다.
+종료 30분 전에는 새 기능을 줄이고 실제 제출 파일, 실행 명령, 알려진 한계를 정리한다. `runner.py report`는 검증 보기, `runner.py close`는 로컬 작업 종료일 뿐 공식 제출이나 전체 AI 종료가 아니다. 실제 제출은 사용자가 한다. no-AI 평가가 시작되면 도움을 중단한다.
 
-Superpowers의 문제 명확화·작은 작업·원인 기반 디버깅·완료 전 검증 흐름을 참고했다. upstream 패키지를 설치하거나 자동 hook을 보장하는 구성은 아니다. 모든 이벤트의 순서를 강제하는 완전한 워크플로 엔진도 아니며, 중요한 전환의 검사와 진행 표시를 제공한다.
+## 기록과 한계
+
+선택은 decisions.md, 용어는 GLOSSARY.md, 구조/상태는 architecture.md, AI 제안의 수용·수정·폐기와 근거는 AI_collaboration.md, 미검증 가정은 limits.md에 작업 중 짧게 남긴다. 일반 개발 기록이며 사후에 완벽한 이야기를 만들어 쓰지 않는다.
+
+v3는 v1/v2 작업 폴더를 자동 변환하지 않는다. 새 연습 폴더에 설치한다. 실제 수행 중 업그레이드하지 말고 기존 증거와 원문을 보존한다. 자동 단계 선택은 에이전트의 지침 준수에 달려 있고, CLI 검사는 의미 검증을 대신하지 않는다.
+
+직접 실행한 `runner.py check`는 HR 질문이나 전체 마감을 감시하지 않는다. 관련 검사는 에이전트가 중단해야 하며, 실행 중 자동 중단이 필요하면 `flow.py run --session verification --engine baseline --label '수용 검사' --limit 60 -- python3 .harness/runner.py check`처럼 감싼다. 이때 Q의 blocks에 verification이 포함되어야 한다. audit는 blocker가 남아 있으면 완료를 허용하지 않는다.

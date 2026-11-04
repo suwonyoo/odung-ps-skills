@@ -14,6 +14,8 @@ from harness import KitError, safe_path  # noqa: E402
 def installation_files():
     files = {".harness/runner.py": SOURCE / "harness.py",
              ".harness/flow.py": SOURCE / "workflow.py",
+             ".harness/coordination.py": SOURCE / "coordination.py",
+             "AGENTS.md": SOURCE / "templates/task-AGENTS.md",
              ".harness/WORKFLOW_KO.md": SOURCE / "docs" / "WORKFLOW_KO.md",
              ".harness/GUIDE.md": SOURCE / "docs" / "SHARED_GUIDANCE.md",
              ".harness/START_HERE_KO.md": SOURCE / "docs" / "START_HERE_KO.md",
@@ -43,6 +45,14 @@ def install(target, apply=False):
         raise KitError("Expected seven bundled skills")
     plan, conflicts = [], []
     for relative, source in files.items():
+        # Preserve supplied instructions. The user can explicitly point Codex at
+        # hackathon-start in existing projects; never silently rewrite rules.
+        if relative == 'AGENTS.md' and (target / relative).exists():
+            safe_path(target, relative)
+            if not (target / relative).is_file():
+                raise KitError('AGENTS.md must be a regular file')
+            print('KEEP   existing AGENTS.md (read hackathon-start explicitly once if it has no workflow entry)')
+            continue
         if source.is_symlink() or not source.is_file():
             raise KitError(f"Missing or symlink source: {source.name}")
         data = source.read_bytes()
@@ -81,7 +91,7 @@ def install(target, apply=False):
         for path in reversed(created):
             path.unlink(missing_ok=True)
         raise
-    print("Installed. Existing README, AGENTS.md, app code, configuration, and authentication were not changed.")
+    print("Installed. Supplied project files are preserved; a workflow AGENTS.md was added only if absent.")
     print("Next: ask Codex to read .agents/skills/hackathon-start/SKILL.md and start; or python3 .harness/flow.py start.")
     return 0
 

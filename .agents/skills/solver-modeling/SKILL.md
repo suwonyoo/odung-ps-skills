@@ -16,3 +16,9 @@ Read actual requirements, `.harness/work/questions.md`, the supplied environment
 9. Freeze a concrete I/O contract revision; link requirement IDs and acceptance checks. On `contract-ready`, move to bounded build. Revisit the model when a stakeholder answer changes a hard rule or objective. Record decomposition losses and unimplemented guarantees instead of claiming full optimization.
 
 Keep this step focused: identify the right problem and get a measured working baseline quickly. Independently test rules; a solver can optimize an incorrectly modeled problem successfully.
+
+## v3 coordination
+
+Require the current intake review before selecting an engine. Read the component/coupling map: use one solver or a justified staged approach, not one engine by habit. Estimate variables/candidates, run representative data early, record decomposition loss and independently validate shared constraints. If business meaning becomes ambiguous during modeling, use stakeholder-bridge immediately. A material reply returns to modeling and invalidates the contract: re-review inputs and freeze the updated contract before integration.
+
+Use an inner solver limit below the outer process limit so the adapter can serialize and validate its incumbent. An outer kill may lose that candidate. Set an installation/prototype allowance in the rehearsal; if no working runtime exists, choose the smallest independently validated permitted baseline or disclose the blocker. Do not claim the baseline meets requirements it fails.

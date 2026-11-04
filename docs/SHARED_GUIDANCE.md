@@ -15,7 +15,7 @@ Use this toolkit only during preparation and a phase in which AI assistance is a
 
 Run `python3 .harness/runner.py --help` for local commands. Read `.harness/START_HERE_KO.md` for the task schema and examples.
 
-For the v2 workflow read `.harness/WORKFLOW_KO.md` and start with hackathon-start. Use `flow.py` to route actual events, preserve important decisions, update session ownership and time expensive commands. It does not launch AI sessions or replace solver-specific models with a universal schema. Optional local solver examples have separate dependencies; the harness itself remains standard-library only.
+For the v3 workflow read `.harness/WORKFLOW_KO.md` and start with hackathon-start. Use `flow.py` to route actual events, preserve important decisions, update session ownership and time expensive commands. It does not launch AI sessions or replace solver-specific models with a universal schema. Optional local solver examples have separate dependencies; the harness itself remains standard-library only.
 
 The runtime uses no network API, browser automation, or AI SDK. Commands that you configure can themselves use network or secrets; inspect them. This toolkit is not a sandbox, firewall, tamper-proof ledger, or authority on exam rules.
 

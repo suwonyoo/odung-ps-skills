@@ -1,22 +1,17 @@
 ---
 name: hackathon-intake
-description: Read a timed coding task, identify required outputs and acceptance checks, and configure a local preparation harness. Use for hackathon preparation or an explicitly AI-permitted implementation phase. Do not use to answer a no-AI follow-up assessment.
+description: Analyze a timed task's supplied files and data before coding, including combined optimization and service problems, shared constraints, unknown business rules, exact outputs and independent acceptance checks. Use for hackathon preparation or AI-permitted implementation, especially a new brief or material change; not a no-AI follow-up.
 ---
 
-Read the task's README, existing project instructions, and relevant task files before changing code. Use the actual task and its constraints as the source of truth. Do not infer required filenames, ports, APIs, deployment, or a tech stack from a generic example.
+Read actual task instructions, relevant files and the supplied project before proposing a solution. Preserve exact delivery paths, stack and evaluation constraints. Read `references/intake-framework.md`; it defines the compact analysis and intake.json fields. If installed, read `.harness/START_HERE_KO.md` for the strict task.json schema.
 
-If present, read `.harness/GUIDE.md`. Use `python3 .harness/runner.py` only when that file exists. Do not create a substitute runner or change platform settings. If the kit is absent, perform the intake in text and state which setup remains missing.
+1. Inventory supplied files, their roles and precise locators (section/page/table). Read decision-bearing content, including tables; mark unreadable/missing material as unknown. Record real sources, not remembered examples. Capture user-provided brief text in the separate task workspace when it has no file.
+2. Restate the observable goal, users, required outputs and what counts as failure. Separate required behavior from optional polish. Build task.json with actual requirement IDs, deliverable paths and behavior-checking commands/manual checks. Unknown submission requirements are questions, not guessed filenames.
+3. Inspect data before selecting a solver: IDs, join cardinalities, units/scaling, dates/timezones/interval boundaries, missing and duplicate policy, availability/directionality, row counts and candidate variable growth. Distinguish facts observed by a command from assumptions. A clean parse does not prove data meaning.
+4. Decompose mixed tasks into decisions and service responsibilities. For each component record input/output, requirement IDs and execution dependencies. Explicitly map shared capacity, demand, time, identity and version constraints. Cyclic decisions need a joint model, bounded feedback or a stated approximation; never pretend independently optimal stages yield a globally feasible/optimal plan.
+5. Write sourced hard/soft/behavior rules and link each to observable checks. Determine objective order before adding weights. Draft one feasible baseline and one smallest end-to-end slice. Estimate model size and a reduction strategy; do not spend the entire analysis budget solving the algorithm.
+6. Find high-impact ambiguity and contradiction. Use stakeholder-bridge at this or any later phase. Ask the current ready frontier (usually up to three), not questions whose prerequisites are unresolved. Explicitly pause dependent tasks. Independent data inventory or adapter scaffolding may continue under recorded ownership. Do not invent HR answers or silently soften a mandatory rule.
+7. Fill `.harness/work/intake.json` with the framework's fields; blank, generic example and unsupported factual claims are not a completed analysis. Use explicit not-applicable with a reason where appropriate. Complete task.json checks before emitting `event inputs-reviewed`. The command validates references, coverage, dependency cycles and source hashes, not whether your interpretation is true.
+8. Briefly show the user the actual problem structure, most consequential tradeoff, current questions and first runnable slice. Then route to solver-modeling. Target 15–25 minutes of a 180-minute rehearsal for intake; this is a planning allowance, not permission to bypass blocking questions or a measured guarantee.
 
-1. Identify the user, required behavior, input/output, constraints, and exact deliverable paths. Separate confirmed requirements from assumptions.
-2. Inspect the existing run command and dependency files. Preserve the supplied project. Ask only questions that change implementation or verification. Draft questions for the user to ask the provided stakeholder; do not automate messenger UI.
-3. Set a short plan with one runnable input-to-output path first. Include time for verification, documentation, and submission review.
-4. Initialize local records with `python3 .harness/runner.py init` if the runner exists. Populate `.harness/work/task.json` from the actual task. Follow the schema in `.harness/START_HERE_KO.md`; do not leave example requirements or paths in place.
-5. For every required requirement, specify an observable acceptance condition and at least one relevant command or manual check. Test logic must check the behavior; an unconditional successful command is not evidence of functionality.
-6. Record expected values from the specification or an independent calculation. Do not derive both implementation and expected values from the same unverified assumption.
-7. Keep actual decisions in `.harness/work/decisions.md`. Do not invent alternatives, failures, timestamps, or stakeholder answers.
-
-Return a brief plan, any material question, and the next bounded implementation step. Keep code edits for the build step. Never claim official compliance, acceptance, or a score.
-
-Do not transmit task files, use private keys or external AI, change supervision, push task content, deploy remotely, or use browser/computer automation when the task forbids those actions. If the user indicates a no-AI phase has begun, stop assistance with the assessment.
-
-When `.harness/flow.py` is installed, keep the `hackathon-start` workflow active: run start once, record pending manual questions, and route `inputs-reviewed` to solver-modeling before core optimization code. Review solver fit, not a fixed OR-Tools default.
+Keep ordinary engineering records, with technical terms explained in plain language. Do not build answer scripts for an active no-AI assessment, transmit forbidden files, automate HR chat, alter platform permissions or replace the supplied project with a generic solution.

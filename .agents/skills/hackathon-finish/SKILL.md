@@ -17,3 +17,7 @@ Read the task's exact submission requirements, existing project guidance, and `.
 For any preparation review, require accurate explanations of what was built, which choices were made, what was actually checked, and what remains unknown. The task-specific rules always take priority over this generic toolkit.
 
 If flow.py is installed, inspect STATUS.md for blocked/stale sessions, integrate their actual changes, and reconcile ordinary engineering records with the final code. Keep user decisions distinct from AI defaults and user observations distinct from command results. Finish readiness does not mean an official submission occurred.
+
+## v3 coordination
+
+Do not hide late ambiguity to finish: use stakeholder-bridge, preserve the original phase and return through modeling if rules changed. Audit after final edits. Check workflow_errors, unfinished workers, pending HR, source hashes and contract revision as well as test exits. Distinguish implemented behavior from documented patterns and toy examples. The user performs official submission.

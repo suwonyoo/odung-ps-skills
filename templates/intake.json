@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "goal": "",
+  "sources": [],
+  "components": [],
+  "composition": "",
+  "couplings": [],
+  "rules": [],
+  "data_review": {"keys": "", "joins": "", "units": "", "time": "", "missing": "", "duplicates": "", "scale": ""},
+  "objective": {"order": "", "tradeoffs": ""},
+  "delivery": {"run_command": "", "submission_method": ""},
+  "baseline": {"method": "", "feasibility": "", "check": ""},
+  "model_size": {"estimate": "", "growth_risk": "", "reduction": ""},
+  "unknowns": [],
+  "next_slice": {"behavior": "", "check": ""},
+  "out_of_scope": ""
+}

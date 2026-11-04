@@ -16,7 +16,11 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-VERSION = "2.0.0"
+# Keep one exception class when the CLI imports coordination during execution.
+if __name__ == '__main__':
+    sys.modules.setdefault(Path(__file__).stem, sys.modules[__name__])
+
+VERSION = "3.0.0"
 IGNORED_DIRS = {".git", ".harness", "node_modules", ".venv", "venv", "__pycache__",
                 ".pytest_cache", ".mypy_cache", ".ruff_cache", "dist", "build", "target", ".next", "coverage"}
 MAX_LOG_BYTES = 8 * 1024 * 1024
@@ -191,6 +195,7 @@ def validate_task(root):
 
 
 def snapshot(root):
+    from coordination import context_signature
     h = hashlib.sha256()
     count = 0
     for parent, dirs, files in os.walk(root, followlinks=False):
@@ -209,12 +214,19 @@ def snapshot(root):
             if count > 20000:
                 raise KitError("Source snapshot exceeds 20,000 files; use a focused task workspace")
             h.update(rel.encode("utf-8") + b"\0" + digest_file(path).encode() + b"\n")
+    # Explicit deliverables remain evidence-bearing even under ignored build dirs.
+    task = load_json(work(root) / 'task.json')
+    artifacts = {}
+    for spec in task.get('deliverables', []):
+        target = safe_path(root, spec['path'])
+        artifacts[spec['path']] = digest_file(target) if target.is_file() else None
     return {"sources_sha256": h.hexdigest(), "task_sha256": digest_file(work(root) / "task.json"),
-            "source_files": count}
+            "context_sha256": context_signature(root),
+            "deliverables_sha256": digest_bytes(json.dumps(artifacts, sort_keys=True).encode()), "source_files": count}
 
 
 def same_snapshot(a, b):
-    return all(a.get(k) == b.get(k) for k in ("sources_sha256", "task_sha256"))
+    return all(a.get(k) == b.get(k) for k in ("sources_sha256", "task_sha256", "context_sha256", "deliverables_sha256"))
 
 
 def stop_process(proc):
@@ -242,12 +254,13 @@ def run_check(root, check):
     start = time.monotonic()
     reason = "completed"
     print(f"RUN {check['id']}", flush=True)
-    with log.open("xb") as output:
-        try:
-            proc = subprocess.Popen(check["argv"], cwd=safe_path(root, check["cwd"], allow_dot=True),
-                                    stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
-                                    start_new_session=os.name == "posix")
+    proc, exit_code = None, 127
+    try:
+        with log.open("xb") as output:
             try:
+                proc = subprocess.Popen(check["argv"], cwd=safe_path(root, check["cwd"], allow_dot=True),
+                                        stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT,
+                                        start_new_session=os.name == "posix")
                 while proc.poll() is None:
                     if time.monotonic() - start >= check["timeout_seconds"]:
                         reason = "timeout"
@@ -259,25 +272,45 @@ def run_check(root, check):
                         break
                     time.sleep(0.04)
                 exit_code = proc.wait()
-            except BaseException:
-                stop_process(proc)
-                raise
-        except OSError as e:
-            output.write((str(e) + "\n").encode("utf-8"))
-            exit_code, reason = 127, "launch_error"
-    if log.stat().st_size > MAX_LOG_BYTES:
-        with log.open("r+b") as f:
-            f.truncate(MAX_LOG_BYTES)
-        reason = "output_limit"
-    after = snapshot(root)
-    reported_exit = 124 if reason == "timeout" else (125 if reason == "output_limit" else exit_code)
-    if reported_exit < 0:
-        reported_exit = 128 - reported_exit
-    record.update({"finished_at": now(), "duration_seconds": round(time.monotonic() - start, 3),
-                   "exit_code": reported_exit, "process_exit_code": exit_code, "reason": reason,
-                   "status": "pass" if reported_exit == 0 else "fail", "after": after,
-                   "workspace_changed": not same_snapshot(before, after), "log_sha256": digest_file(log)})
-    write_json(evidence / (run_id + ".json"), record, exclusive=True)
+            except OSError as e:
+                if proc is None:
+                    exit_code, reason = 127, 'launch_error'
+                else:
+                    stop_process(proc)
+                    exit_code, reason = proc.returncode, 'supervisor_error'
+                output.write((str(e) + "\n").encode("utf-8"))
+    except KeyboardInterrupt:
+        reason = 'interrupted'
+        if proc is not None:
+            stop_process(proc)
+            exit_code = proc.returncode
+    except BaseException:
+        reason = 'interrupted'
+        if proc is not None:
+            stop_process(proc)
+            exit_code = proc.returncode
+        raise
+    finally:
+        if log.exists() and log.stat().st_size > MAX_LOG_BYTES:
+            with log.open("r+b") as f:
+                f.truncate(MAX_LOG_BYTES)
+            reason = "output_limit"
+        try:
+            after = snapshot(root)
+            changed = not same_snapshot(before, after)
+        except (KitError, OSError, ValueError) as exc:
+            after, changed = None, True
+            record['snapshot_error'] = str(exc)
+        reported_exit = {'timeout':124, 'output_limit':125, 'supervisor_error':125, 'interrupted':130}.get(reason, exit_code)
+        if reported_exit < 0:
+            reported_exit = 128 - reported_exit
+        if reported_exit == 0 and 'snapshot_error' in record:
+            reported_exit = 2  # Process succeeded; evidence capture did not.
+        record.update({"finished_at": now(), "duration_seconds": round(time.monotonic() - start, 3),
+                       "exit_code": reported_exit, "process_exit_code": exit_code, "reason": reason,
+                       "status": "pass" if reported_exit == 0 else "fail", "after": after,
+                       "workspace_changed": changed, "log_sha256": digest_file(log) if log.exists() else None})
+        write_json(evidence / (run_id + ".json"), record, exclusive=True)
     print(f"{record['status'].upper()} {check['id']}: exit={reported_exit}; {record['log']}")
     return reported_exit
 
@@ -362,6 +395,7 @@ def evidence_status(root, task):
 
 
 def audit_result(root):
+    from coordination import readiness_errors
     task = validate_task(root)
     rows = evidence_status(root, task)
     artifacts = []
@@ -376,7 +410,9 @@ def audit_result(root):
         requirements.append({**req, "state": "checks_satisfied" if ok else "not_verified"})
     ok = (all(r["state"] == "checks_satisfied" for r in requirements if r["required"])
           and all(d["state"] == "present" for d in artifacts if d["required"]))
-    return {"title": task["title"], "checked_at": now(), "local_checks_satisfied": ok,
+    workflow_errors = readiness_errors(root)
+    return {"title": task["title"], "checked_at": now(), "local_checks_satisfied": ok and not workflow_errors,
+            "workflow_errors": workflow_errors,
             "requirements": requirements, "checks": rows, "deliverables": artifacts,
             "notice": "Local checks only. This is not official submission, grading, or proof of every behavior."}
 
@@ -390,6 +426,8 @@ def audit(root, as_json=False):
             print(f"{c['state']:20} {c['id']} {c['description']}")
         for d in result["deliverables"]:
             print(f"{d['state']:20} {d['path']}")
+        for error in result['workflow_errors']:
+            print('WORKFLOW BLOCKED     ' + error)
         print("LOCAL CHECKS SATISFIED" if result["local_checks_satisfied"] else "NOT VERIFIED / MISSING")
         print(result["notice"])
     return 0 if result["local_checks_satisfied"] else 1
@@ -412,6 +450,8 @@ def report(root):
     lines += ["", "| Deliverable | Present |", "|---|---|"]
     for d in result["deliverables"]:
         lines.append(f"| {md_cell(d['path'])} | {d['state']} |")
+    if result['workflow_errors']:
+        lines += ['', '## Workflow blockers', '', *['- ' + md_cell(x) for x in result['workflow_errors']]]
     lines += ["", "Manual results are explicitly user-reported. Unrun and stale checks remain unverified.",
               "Copy only the required content to the actual submission paths and audit again after edits.", ""]
     path = safe_path(root, ".harness/work/verification.md")
